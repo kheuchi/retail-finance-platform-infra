@@ -1,0 +1,2 @@
+# Copy this file to terraform.tfvars. The copied file is ignored by Git.
+budget_alert_email = "replace-with-your-email@example.com"
