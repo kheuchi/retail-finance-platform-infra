@@ -56,6 +56,18 @@ variable "github_repository" {
   default     = "retail-finance-platform-infra"
 }
 
+variable "github_organization_id" {
+  description = "Immutable GitHub owner ID used by the repository's hardened OIDC subject template."
+  type        = number
+  default     = 47268855
+}
+
+variable "github_repository_id" {
+  description = "Immutable GitHub repository ID used by the hardened OIDC subject template."
+  type        = number
+  default     = 1371524439
+}
+
 variable "github_deploy_environment" {
   description = "Protected GitHub Environment required for infrastructure applies."
   type        = string
