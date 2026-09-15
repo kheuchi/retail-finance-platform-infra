@@ -11,6 +11,8 @@ repositories listed by the control plane's `REPOSITORIES.md`.
 - `bootstrap/`: remote Terraform state, AWS Budget alerts, and the IAM account
   password policy.
 - `docs/architecture/`: infrastructure-specific architecture decisions.
+- `.github/workflows/ci.yml`: Terraform checks, advisory Checkov, and automated
+  semantic releases.
 
 No Terraform configuration has been applied to AWS yet.
 
@@ -18,3 +20,6 @@ No Terraform configuration has been applied to AWS yet.
 
 Run `terraform plan` and review persistent-cost resources before every apply.
 Never commit credentials, generated plans, state files, or local variable files.
+
+Use Conventional Commits because semantic-release derives versions from commit
+history. See `docs/ci-cd.md` for pipeline behavior and GitHub settings.

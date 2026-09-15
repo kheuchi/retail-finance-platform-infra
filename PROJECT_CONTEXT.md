@@ -24,9 +24,9 @@ agent prompts/tools, dashboards, or business documentation.
 - Terraform 1.14.6 verified locally.
 - HashiCorp AWS provider 6.64.0 selected in the dependency lock file.
 - Bootstrap code passes formatting and validation.
-- No Terraform plan or apply has run.
-- No AWS resources have been created by this repository.
-- Approved primary region: `eu-west-3` (Paris).
+- Bootstrap is deployed and managed from encrypted remote state.
+- Management/bootstrap region: `eu-west-3` (Paris).
+- Approved workload/AI region: `eu-central-1` (Frankfurt).
 - Monthly personal-spend ceiling: USD 50.
 - AWS Organizations and Control Tower must not be enabled while preserving the
   current AWS Free plan credits.
@@ -69,8 +69,13 @@ agent prompts/tools, dashboards, or business documentation.
 - Added and applied actual-spend alerts at 50% and 80%, plus a forecasted-spend alert
   at 100%, using the locally configured recipient; 0 resources added, 1 changed, 0
   destroyed.
+- Selected Frankfurt for workloads after verifying that neither Stockholm nor Paris
+  supports required Databricks custom model and agent serving. The existing small
+  state backend remains in Paris.
+- Added GitHub Actions CI with Terraform formatting/validation, shell checks, an
+  explicitly non-blocking Checkov 3.3.17 job, and semantic-release 25.0.9 on `main`.
 
 ## Next action
 
-Supply the local budget notification email, run a bootstrap plan, review it, and
-obtain explicit approval before the first apply.
+Validate the CI workflow locally, create the npm lock file, rename the branch to
+`main`, then connect and push the repository to GitHub.
