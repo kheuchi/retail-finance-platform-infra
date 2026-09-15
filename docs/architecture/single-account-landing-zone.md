@@ -16,15 +16,13 @@ blast-radius boundary as separate AWS accounts and SCPs.
 
 ## Regions
 
-- Management/bootstrap region: `eu-west-3` (Paris), containing the small Terraform
-  state bucket already deployed.
-- Primary workload and AI region: `eu-central-1` (Frankfurt).
+- Management/bootstrap, workload and AI region: `eu-central-1` (Frankfurt).
 - Frankfurt keeps processing in the EU and currently supports Databricks custom
   CPU/GPU model serving, agent serving, external models, Foundation Model APIs, and
   Amazon Bedrock Custom Model Import. Stockholm and Paris do not provide the
   required Databricks custom model-serving capability.
-- Cross-region traffic between state and workloads is limited to Terraform metadata;
-  business datasets remain in the workload region.
+- Keeping regional resources together reduces operational complexity, cross-region
+  transfer paths, and the number of residency boundaries to explain and govern.
 - Global services such as IAM, CloudFront and AWS Budgets are managed deliberately
   rather than assumed to be regional.
 
@@ -105,8 +103,7 @@ multi-account design will show how Control Tower corrects them.
 Before the first Terraform apply:
 
 1. Named non-root identity and MFA verified.
-2. Management region explicitly set to `eu-west-3` and workload region to
-   `eu-central-1`.
+2. Management and workload region explicitly set to `eu-central-1`.
 3. Cost estimate and budget notification address agreed.
 4. Terraform plan reviewed for persistent hourly resources.
 5. Destruction and recovery behavior documented.

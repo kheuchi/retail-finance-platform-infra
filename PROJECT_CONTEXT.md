@@ -25,8 +25,7 @@ agent prompts/tools, dashboards, or business documentation.
 - HashiCorp AWS provider 6.64.0 selected in the dependency lock file.
 - Bootstrap code passes formatting and validation.
 - Bootstrap is deployed and managed from encrypted remote state.
-- Management/bootstrap region: `eu-west-3` (Paris).
-- Approved workload/AI region: `eu-central-1` (Frankfurt).
+- Management, bootstrap, workload and AI region: `eu-central-1` (Frankfurt).
 - Monthly personal-spend ceiling: USD 50.
 - AWS Organizations and Control Tower must not be enabled while preserving the
   current AWS Free plan credits.
@@ -81,6 +80,12 @@ agent prompts/tools, dashboards, or business documentation.
   controls (32 passed, 5 findings) and remained advisory; semantic-release created
   `v1.0.1`. Findings cover incomplete-upload cleanup, access logging, event
   notifications, cross-region replication, and KMS encryption for the state bucket.
+- Migrated the versioned Terraform backend from Paris to Frankfurt. Created and
+  protected the destination first, copied state, rebound Terraform ownership, and
+  applied a reviewed plan of 6 additions, 1 in-place update, and 0 deletions.
+- Verified a post-migration refresh plan had no changes, then emptied all versions
+  from the old Paris bucket and deleted it. All project infrastructure now uses
+  `eu-central-1`; IAM and AWS Budgets remain global services.
 
 ## Next action
 
