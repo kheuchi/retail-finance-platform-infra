@@ -37,8 +37,12 @@ uses commit messages to calculate a version and create a GitHub release.
 - The AWS plan role trusts only this repository's immutable owner/repository IDs and
   `main` branch. Pull requests run static checks without AWS access, preventing
   untrusted PR code from reading AWS or surviving a repository rename/name reuse.
-- Applies require a manual workflow dispatch from `main`, the `aws-bootstrap`
-  Environment, an exact saved plan, and a separately scoped deployment role.
+- Applies require a manual workflow dispatch from `main`, the literal confirmation
+  word `apply`, the `aws-bootstrap` Environment, and a separately scoped deployment
+  role. The job saves a plan and applies that exact file, so nothing can change
+  between plan and apply inside the run. Be precise about what this does not do:
+  the plan is generated and consumed in the same job, so no human reads it in
+  between. The human gate is the dispatch, not a plan review.
 - The current private-repository GitHub plan does not support Environment reviewer
   protection. Manual dispatch is the portfolio gate; required reviewers are the
   documented enterprise upgrade.
@@ -51,7 +55,31 @@ uses commit messages to calculate a version and create a GitHub release.
 - Do not require `Checkov advisory scan` while it remains non-blocking.
 - Store `AWS_PLAN_ROLE_ARN` as a repository variable, `AWS_DEPLOY_ROLE_ARN` as an
   `aws-bootstrap` Environment variable, and the notification address as the masked
-  `TF_VAR_budget_alert_email` Actions secret.
+  `TF_VAR_BUDGET_ALERT_EMAIL` Actions secret. GitHub stores secret names in upper
+  case and resolves `secrets.*` case-insensitively, so the workflow's lower-case
+  reference is correct and must stay lower case after `TF_VAR_` for Terraform to
+  map it onto the `budget_alert_email` variable.
+- Set that secret with no trailing newline, for example
+  `printf '%s' "$email" | gh secret set TF_VAR_BUDGET_ALERT_EMAIL`. A trailing
+  newline or a blank value fails the variable validation, because GitHub supplies a
+  missing secret as an empty string rather than omitting the environment variable.
+
+## Local verification
 
 Run `./scripts/validate-local.sh` before committing to validate JSON, workflow YAML,
-Terraform formatting, and shell syntax.
+Terraform formatting, and shell syntax. It needs no AWS credentials.
+
+Run the pipeline from WSL2 (Ubuntu), not from Windows, so the toolchain matches the
+CI runner. `PROJECT_CONTEXT.md` lists the verified versions. Because the AWS CLI is
+installed under `~/.local/bin`, non-login shells must export
+`PATH="$HOME/.local/bin:$PATH"` before calling the scripts.
+
+To inspect a pipeline failure without guessing, read the run's retained logs:
+
+```bash
+gh run list --limit 5
+gh run view <run-id> --log-failed
+```
+
+GitHub retains the decoded OIDC claims of past runs, which is how the hardened
+subject format was recovered rather than inferred.

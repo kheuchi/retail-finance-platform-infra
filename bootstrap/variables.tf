@@ -40,7 +40,12 @@ variable "budget_alert_email" {
 
   validation {
     condition     = var.budget_alert_email == null || can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.budget_alert_email))
-    error_message = "budget_alert_email must be a valid email address."
+    error_message = <<-EOT
+    budget_alert_email must be a valid email address, or be omitted entirely.
+    In CI this variable comes from the TF_VAR_BUDGET_ALERT_EMAIL Actions secret.
+    A missing or blank secret arrives as an empty string rather than as null, so
+    it fails here instead of silently planning the Budget without notifications.
+    EOT
   }
 }
 
