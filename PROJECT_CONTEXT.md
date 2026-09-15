@@ -74,6 +74,9 @@ agent prompts/tools, dashboards, or business documentation.
   state backend remains in Paris.
 - Added GitHub Actions CI with Terraform formatting/validation, shell checks, an
   explicitly non-blocking Checkov 3.3.17 job, and semantic-release 25.0.9 on `main`.
+- Published the private GitHub repository. The first run passed Terraform checks and
+  created semantic release `v1.0.0`. Checkov exposed a missing pip cache dependency
+  path before scanning; added `requirements-ci.txt` and wired the cache to it.
 
 ## Next action
 

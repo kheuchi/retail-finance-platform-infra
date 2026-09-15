@@ -50,8 +50,9 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+          cache-dependency-path: requirements-ci.txt
       - name: Install pinned Checkov
-        run: python -m pip install --disable-pip-version-check checkov==3.3.17
+        run: python -m pip install --disable-pip-version-check --requirement requirements-ci.txt
       - name: Scan Terraform
         run: checkov --directory bootstrap --framework terraform --compact --quiet
 
