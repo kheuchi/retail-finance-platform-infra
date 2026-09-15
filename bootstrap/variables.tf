@@ -43,3 +43,21 @@ variable "budget_alert_email" {
     error_message = "budget_alert_email must be a valid email address."
   }
 }
+
+variable "github_organization" {
+  description = "GitHub organization or user that owns the infrastructure repository."
+  type        = string
+  default     = "kheuchi"
+}
+
+variable "github_repository" {
+  description = "GitHub repository permitted to request AWS deployment credentials."
+  type        = string
+  default     = "retail-finance-platform-infra"
+}
+
+variable "github_deploy_environment" {
+  description = "Protected GitHub Environment required for infrastructure applies."
+  type        = string
+  default     = "aws-bootstrap"
+}

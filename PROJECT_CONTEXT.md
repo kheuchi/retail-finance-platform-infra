@@ -86,9 +86,17 @@ agent prompts/tools, dashboards, or business documentation.
 - Verified a post-migration refresh plan had no changes, then emptied all versions
   from the old Paris bucket and deleted it. All project infrastructure now uses
   `eu-central-1`; IAM and AWS Budgets remain global services.
+- Provisioned the GitHub Actions OIDC provider plus separate plan and deploy roles.
+  The plan role is read-only except for its exact S3 lock object and trusts only
+  this repository's `main` branch. The deploy role is limited to bootstrap-owned
+  resources and trusts only the `aws-bootstrap` GitHub Environment.
+- Created the GitHub Environment, repository/environment role variables, and masked
+  budget-email secret. The current private-repository plan does not support reviewer
+  protection, so manual workflow dispatch from `main` is the present human gate.
+- Added a real AWS refresh-plan job to CI and a manual plan-then-apply workflow. Both
+  use short-lived OIDC sessions and immutable action SHAs; no AWS keys are stored.
 
 ## Next action
 
-Triage the five Checkov findings: implement low-cost controls, and document explicit
-cost/risk exceptions where an enterprise control is intentionally deferred. Then
-design the Frankfurt workload foundation and GitHub OIDC deployment role.
+Exercise the GitHub OIDC cloud-plan job, then triage the five Checkov findings and
+design the cost-controlled Frankfurt workload foundation.

@@ -13,8 +13,12 @@ repositories listed by the control plane's `REPOSITORIES.md`.
 - `docs/architecture/`: infrastructure-specific architecture decisions.
 - `.github/workflows/ci.yml`: Terraform checks, advisory Checkov, and automated
   semantic releases.
+- `.github/workflows/deploy-bootstrap.yml`: manually gated, OIDC-authenticated
+  bootstrap deployment from `main`.
 
-No Terraform configuration has been applied to AWS yet.
+The bootstrap stack is deployed in `eu-central-1` and uses a protected remote
+backend. GitHub plans and deployments use temporary OIDC role sessions; no AWS
+access keys are stored in GitHub.
 
 ## Safety rule
 
