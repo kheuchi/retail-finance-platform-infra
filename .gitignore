@@ -18,3 +18,4 @@ terraform.rc
 *.p12
 *.pfx
 artifacts/
+node_modules/
