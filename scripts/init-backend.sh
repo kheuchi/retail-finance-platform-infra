@@ -23,12 +23,15 @@ cleanup_credentials() {
 }
 trap cleanup_credentials EXIT
 
+account_id="$(aws sts get-caller-identity --query Account --output text)"
+state_bucket="retail-finance-platform-tfstate-${account_id}-eu-west-3"
+
 cd "${bootstrap_dir}"
 terraform init \
   -migrate-state \
   -force-copy \
   -input=false \
-  -backend-config="bucket=retail-finance-platform-tfstate-AWS_ACCOUNT_ID-eu-west-3" \
+  -backend-config="bucket=${state_bucket}" \
   -backend-config="key=bootstrap/terraform.tfstate" \
   -backend-config="region=eu-west-3" \
   -backend-config="use_lockfile=true" \
