@@ -1,5 +1,7 @@
 locals {
-  github_repository       = "${var.github_organization}/${var.github_repository}"
+  # GitHub's hardened OIDC subject identifies the owner and repository by their
+  # immutable numeric IDs, so a rename or a reused name cannot inherit this trust.
+  github_oidc_subject     = "${var.github_organization}@${var.github_organization_id}/${var.github_repository}@${var.github_repository_id}"
   github_oidc_provider_id = "token.actions.githubusercontent.com"
   github_plan_role_name   = "${var.project_name}-github-plan"
   github_deploy_role_name = "${var.project_name}-github-deploy"
@@ -33,7 +35,7 @@ data "aws_iam_policy_document" "github_plan_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.github_oidc_provider_id}:sub"
-      values   = ["repo:${local.github_repository}:ref:refs/heads/main"]
+      values   = ["repo:${local.github_oidc_subject}:ref:refs/heads/main"]
     }
   }
 }
@@ -102,7 +104,7 @@ data "aws_iam_policy_document" "github_deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "${local.github_oidc_provider_id}:sub"
-      values   = ["repo:${local.github_repository}:environment:${var.github_deploy_environment}"]
+      values   = ["repo:${local.github_oidc_subject}:environment:${var.github_deploy_environment}"]
     }
   }
 }

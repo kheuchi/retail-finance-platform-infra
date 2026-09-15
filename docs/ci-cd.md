@@ -34,8 +34,9 @@ uses commit messages to calculate a version and create a GitHub release.
 - npm dependencies are exact and locked.
 - Dependabot proposes controlled Actions and npm updates.
 - CI uses no administrator profile or long-lived AWS keys.
-- The AWS plan role trusts only this repository's `main` branch. Pull requests run
-  static checks without AWS access, preventing untrusted PR code from reading AWS.
+- The AWS plan role trusts only this repository's immutable owner/repository IDs and
+  `main` branch. Pull requests run static checks without AWS access, preventing
+  untrusted PR code from reading AWS or surviving a repository rename/name reuse.
 - Applies require a manual workflow dispatch from `main`, the `aws-bootstrap`
   Environment, an exact saved plan, and a separately scoped deployment role.
 - The current private-repository GitHub plan does not support Environment reviewer
