@@ -77,8 +77,13 @@ agent prompts/tools, dashboards, or business documentation.
 - Published the private GitHub repository. The first run passed Terraform checks and
   created semantic release `v1.0.0`. Checkov exposed a missing pip cache dependency
   path before scanning; added `requirements-ci.txt` and wired the cache to it.
+- Verified the repaired workflow on GitHub. Terraform checks passed; Checkov ran 37
+  controls (32 passed, 5 findings) and remained advisory; semantic-release created
+  `v1.0.1`. Findings cover incomplete-upload cleanup, access logging, event
+  notifications, cross-region replication, and KMS encryption for the state bucket.
 
 ## Next action
 
-Validate the CI workflow locally, create the npm lock file, rename the branch to
-`main`, then connect and push the repository to GitHub.
+Triage the five Checkov findings: implement low-cost controls, and document explicit
+cost/risk exceptions where an enterprise control is intentionally deferred. Then
+design the Frankfurt workload foundation and GitHub OIDC deployment role.
