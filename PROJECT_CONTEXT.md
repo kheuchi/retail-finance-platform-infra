@@ -40,6 +40,13 @@ agent prompts/tools, dashboards, or business documentation.
 6. Keep reusable modules separate from environment compositions.
 7. Record every apply, destroy, exception and residual cost in this file.
 
+## Communication rules
+
+- Start user-facing updates with a plain-language `TL;DR`.
+- Introduce the correct technical terms and explain what they mean in practice.
+- Clearly distinguish completed, verified work from work that is planned or blocked.
+- Report security, cost and destructive-change implications in human-readable terms.
+
 ## Progress
 
 ### 2026-09-14
@@ -95,8 +102,13 @@ agent prompts/tools, dashboards, or business documentation.
   protection, so manual workflow dispatch from `main` is the present human gate.
 - Added a real AWS refresh-plan job to CI and a manual plan-then-apply workflow. Both
   use short-lived OIDC sessions and immutable action SHAs; no AWS keys are stored.
+- Tested the first OIDC cloud-plan run. Static Terraform checks passed and Checkov
+  remained advisory, but AWS role assumption failed safely. A temporary diagnostic
+  exposed only non-sensitive claims and confirmed GitHub's hardened subject includes
+  immutable owner and repository IDs. Updated the trust policy locally and removed
+  the diagnostic; deployment and a successful CI retest are still pending.
 
 ## Next action
 
-Exercise the GitHub OIDC cloud-plan job, then triage the five Checkov findings and
-design the cost-controlled Frankfurt workload foundation.
+Apply and push the immutable-ID OIDC trust correction, verify the cloud plan reports
+no drift, then triage Checkov and design the Frankfurt workload foundation.
