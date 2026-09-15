@@ -24,7 +24,7 @@ cleanup_credentials() {
 trap cleanup_credentials EXIT
 
 account_id="$(aws sts get-caller-identity --query Account --output text)"
-state_bucket="retail-finance-platform-tfstate-${account_id}-eu-west-3"
+state_bucket="retail-finance-platform-tfstate-${account_id}-eu-central-1"
 
 cd "${bootstrap_dir}"
 terraform init \
@@ -33,7 +33,7 @@ terraform init \
   -input=false \
   -backend-config="bucket=${state_bucket}" \
   -backend-config="key=bootstrap/terraform.tfstate" \
-  -backend-config="region=eu-west-3" \
+  -backend-config="region=eu-central-1" \
   -backend-config="use_lockfile=true" \
   -backend-config="encrypt=true"
 

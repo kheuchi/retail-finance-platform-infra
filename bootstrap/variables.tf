@@ -1,11 +1,11 @@
 variable "aws_region" {
   description = "Primary AWS region for the platform."
   type        = string
-  default     = "eu-west-3"
+  default     = "eu-central-1"
 
   validation {
-    condition     = var.aws_region == "eu-west-3"
-    error_message = "This project's approved primary region is eu-west-3 (Paris)."
+    condition     = var.aws_region == "eu-central-1"
+    error_message = "This project's approved primary region is eu-central-1 (Frankfurt)."
   }
 }
 

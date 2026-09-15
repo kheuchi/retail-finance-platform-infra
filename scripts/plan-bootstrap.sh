@@ -7,7 +7,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bootstrap_dir="${repo_root}/bootstrap"
 
 export AWS_PROFILE="${AWS_PROFILE:-retail-platform-admin}"
-export AWS_REGION="${AWS_REGION:-eu-west-3}"
+export AWS_REGION="${AWS_REGION:-eu-central-1}"
 export AWS_PAGER=""
 
 credential_exports="$(
