@@ -1,6 +1,7 @@
 # Frankfurt Foundation: Network, Audit and Databricks
 
-Status: **proposal**. Nothing in this document is deployed. It exists so the cost and
+Status: **step 1 built, the rest still proposal**. The audit baseline was deployed
+on 2026-09-16. Nothing else in this document is deployed. It exists so the cost and
 security trade-offs can be decided before anything chargeable is created.
 
 ## TL;DR

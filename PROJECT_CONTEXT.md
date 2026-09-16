@@ -254,11 +254,38 @@ a separate, monitored emergency-access role with alerting on every use.
   resources), keep the network serverless so no VPC is needed at all, and treat
   Databricks as a time-boxed exercise with auto-termination and a hard stop.
 
+- Built the audit baseline. The account now records who called which AWS API, when,
+  and from where. Previously nothing recorded that at all. A dedicated log bucket
+  with the same protections as the state bucket and a 365-day expiry, plus a
+  multi-region trail with global service events and log file validation. Object-level
+  data events are captured for the Terraform state bucket only, since data events
+  bill per event and account-wide capture is how that becomes expensive.
+- Verified live: logging enabled, delivery succeeding with no error, 25 log objects
+  written, and a refresh plan showing no drift. Cost: the first copy of management
+  events is free; storage and the scoped data events are pennies. No hourly
+  resources.
+- Deliberately split into two applies. The deploy role was granted its new
+  permissions in one apply before the resources were created in the next, because a
+  role cannot create what it has no permission for and Terraform does not guarantee
+  it updates that role first.
+- That still was not enough. `cloudtrail:DescribeTrails` and `ListTrails` are
+  account-wide enumeration calls with no AWS-defined resource type, so the
+  trail-scoped ARN was rejected and the post-create read-back failed. The resources
+  themselves applied correctly and the trail was logging throughout; the failure then
+  blocked the pipeline's own refresh. Repaired through the break-glass runbook, which
+  had its second real use.
+- The failed read-back left the trail tainted in state, so the next pipeline run
+  replaced it. That is correct recovery behaviour, but it means the apply reported
+  one destroy, and a report of zero destroys would have been wrong.
+- Lesson now recorded twice in one session: least-privilege scoping must be checked
+  against whether each individual action supports resource-level permissions at all.
+  Several do not, and the failure only appears at runtime.
+
 ## Next action
 
-1. Decide whether to build the audit baseline (CloudTrail management trail plus a
-   protected log bucket). It is the one part recommended without further cost
-   discussion.
+1. Integrate the trail with CloudWatch Logs and add a metric filter and alarm on
+   break-glass role assumption. This is the deferred Checkov finding CKV2_AWS_10 and
+   it closes the alerting gap the runbook names.
 2. Answer the three open Databricks questions, especially whether the AWS credit
    covers Databricks charges, since that changes the effective budget.
 3. Produce the threat model, control matrix and responsibility matrix.
