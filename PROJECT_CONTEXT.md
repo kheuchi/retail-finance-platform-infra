@@ -160,6 +160,25 @@ Two operating notes for anyone reproducing this:
 - Re-ran CI: Terraform checks passed, the AWS plan reported no drift, Checkov
   remained advisory at 89 passed and 7 findings, and semantic-release cut `v1.1.0`.
 
+### 2026-09-16
+
+- Removed every employer email address from both repositories. All 11 commits here
+  and all 9 in the control plane were rewritten to `kheuchi
+  <cheikhalioune@outlook.com>`, and the `v1.0.0`, `v1.0.1` and `v1.1.0` tags were
+  re-pointed so no GitHub Release was orphaned. Dependabot's own authorship was
+  deliberately left intact.
+- Root cause of the original mixed identity: Windows Git and the WSL Git used
+  different global `user.email` values, so whichever shell committed silently decided
+  the author. Both global configurations, and both repository-local configurations,
+  now use the same identity.
+- Changed the AWS Budget alert recipient to a personal address. Updated the
+  Git-ignored `bootstrap/terraform.tfvars` and the `TF_VAR_BUDGET_ALERT_EMAIL`
+  Actions secret. The address is not stored in Git.
+- The local browser-based AWS session expired, so this change was applied through the
+  deployment pipeline rather than from the workstation. Plain words: the automation we
+  built is now the delivery path, and a stale laptop session no longer blocks a
+  change. This is also the first real exercise of the deploy role.
+
 ## Verified security and cost position
 
 - No AWS access keys exist in GitHub. Both workflows use short-lived OIDC sessions.
