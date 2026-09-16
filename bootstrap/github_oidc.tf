@@ -192,7 +192,6 @@ data "aws_iam_policy_document" "github_deploy" {
       "cloudtrail:AddTags",
       "cloudtrail:CreateTrail",
       "cloudtrail:DeleteTrail",
-      "cloudtrail:DescribeTrails",
       "cloudtrail:GetEventSelectors",
       "cloudtrail:GetTrail",
       "cloudtrail:GetTrailStatus",
@@ -204,6 +203,20 @@ data "aws_iam_policy_document" "github_deploy" {
       "cloudtrail:UpdateTrail"
     ]
     resources = [local.audit_trail_arn]
+  }
+
+  statement {
+    # DescribeTrails and ListTrails are account-wide enumeration calls. AWS defines
+    # no resource type for them, so a trail-scoped ARN is rejected outright and "*"
+    # is the only expressible form. They are read-only and disclose trail
+    # configuration, not log contents.
+    sid    = "EnumerateCloudTrailTrails"
+    effect = "Allow"
+    actions = [
+      "cloudtrail:DescribeTrails",
+      "cloudtrail:ListTrails"
+    ]
+    resources = ["*"]
   }
 
   statement {

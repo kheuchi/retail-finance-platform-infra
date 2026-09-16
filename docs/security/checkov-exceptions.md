@@ -16,7 +16,12 @@ an entry here, and every entry must state what would make us revisit it.
 
 ## Status
 
-Baseline at triage (2026-09-16): 89 passed, 7 failed, 0 skipped.
+Baseline at triage (2026-09-16): 89 passed, 7 failed, 0 skipped. After triage:
+90 passed, 0 failed, 6 skipped.
+
+After the audit baseline was added the same day, three further findings appeared on
+the trail itself. All three are recorded below; one of them, CloudWatch Logs
+integration, is deferred rather than rejected and is the next planned increment.
 
 | Check | Resource | Disposition |
 |---|---|---|
@@ -27,6 +32,9 @@ Baseline at triage (2026-09-16): 89 passed, 7 failed, 0 skipped.
 | CKV2_AWS_62 | State bucket | Not applicable |
 | CKV_AWS_144 | State bucket | Rejected on cost and architecture grounds |
 | CKV_AWS_145 | State bucket | Accepted risk, cost-driven |
+| CKV_AWS_252 | CloudTrail trail | Not applicable |
+| CKV_AWS_35 | CloudTrail trail | Accepted risk, cost-driven |
+| CKV2_AWS_10 | CloudTrail trail | **Deferred, wanted next** |
 
 ## Fixed
 
@@ -89,6 +97,44 @@ and pay for that improves nothing.
 
 Revisit when: a consumer genuinely exists, for example automated drift detection
 triggered by out-of-band state writes.
+
+### CKV_AWS_252 — no SNS topic on the trail
+
+CloudTrail can publish a notification each time a log file is delivered. There is no
+subscriber for that, and delivery notifications are not the control people assume
+they are: they say a file arrived, not that anything suspicious is in it.
+
+Residual risk: none meaningful. The useful alerting control is a CloudWatch metric
+filter on the log contents, recorded below as the next increment.
+
+### CKV_AWS_35 — trail logs not encrypted with a KMS CMK
+
+Logs are encrypted at rest with SSE-S3, and the bucket denies non-TLS requests. The
+difference a customer-managed key makes is an independent audit trail of decryption
+and a revocation path, at a fixed monthly charge plus per-request cost.
+
+Residual risk: no key-level audit or revocation for log data.
+
+Revisit when: the same trigger as CKV_AWS_145 on the state bucket. These two should
+be decided together, since a single key can serve both.
+
+### CKV2_AWS_10 — trail not integrated with CloudWatch Logs
+
+This one is wanted, and deferred rather than rejected.
+
+Sending the trail to CloudWatch Logs is what turns a record into an alarm: metric
+filters can match an event pattern and fire in near real time. It is specifically
+what would close the gap the break-glass runbook names, where emergency
+administrator access currently raises no alert.
+
+It is not free. CloudWatch Logs bills per GB ingested and stored, though management
+events in an account this quiet are a small volume. It also needs a log group and an
+IAM role for CloudTrail to write through, which means more deploy-role permissions.
+
+Deferred only to keep this change small after two permission-scoping corrections in
+one session. It is the recommended next increment of the audit baseline.
+
+Revisit: next, and deliberately.
 
 ## Rejected
 

@@ -166,6 +166,11 @@ resource "aws_cloudtrail" "management_events" {
   name           = local.audit_trail_name
   s3_bucket_name = aws_s3_bucket.audit_logs.id
 
+  # Accepted, reviewed exceptions. See docs/security/checkov-exceptions.md.
+  #checkov:skip=CKV_AWS_252:An SNS topic on log delivery has no subscriber. Delivery notifications are not the alerting control; CloudWatch metric filters are, and they are the next increment.
+  #checkov:skip=CKV_AWS_35:Logs are encrypted with SSE-S3. A customer-managed KMS key adds a fixed monthly charge against a USD 50 ceiling.
+  #checkov:skip=CKV2_AWS_10:CloudWatch Logs integration is wanted and deferred deliberately, not rejected. It is what turns the trail into alerting, and it is the recommended next increment.
+
   # Capture activity in every region, not just Frankfurt. An attacker operating in
   # an unused region is precisely the case a single-region trail would miss.
   is_multi_region_trail = true
