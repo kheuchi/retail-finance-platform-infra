@@ -11,6 +11,14 @@ resource "aws_s3_bucket" "terraform_state" {
   bucket        = local.state_bucket_name
   force_destroy = false
 
+  # Accepted, reviewed exceptions. Rationale and revisit triggers are recorded in
+  # docs/security/checkov-exceptions.md; do not add a skip here without adding the
+  # matching entry there.
+  #checkov:skip=CKV_AWS_18:Server access logging needs a second bucket and an audit baseline; deferred to the CloudTrail/audit work item.
+  #checkov:skip=CKV2_AWS_62:Event notifications have no consumer. Terraform state changes are driven by CI, not by bucket events.
+  #checkov:skip=CKV_AWS_144:Cross-region replication contradicts decision D-013 (single region) and doubles storage cost for a file that is already versioned and reproducible.
+  #checkov:skip=CKV_AWS_145:SSE-KMS with a customer-managed key adds a fixed monthly charge against a USD 50 ceiling. SSE-S3 (AES-256) is enforced and TLS is required in transit.
+
   lifecycle {
     prevent_destroy = true
   }
@@ -62,6 +70,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "terraform_state" {
 
     noncurrent_version_expiration {
       noncurrent_days = 90
+    }
+
+    # A failed state upload leaves orphaned multipart parts that are billed as
+    # storage but are invisible in a normal bucket listing. Reap them.
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
     }
   }
 }

@@ -117,6 +117,13 @@ resource "aws_iam_role" "github_deploy" {
 }
 
 data "aws_iam_policy_document" "github_deploy" {
+  # Accepted, reviewed exception. See docs/security/checkov-exceptions.md.
+  # Only the account password policy still uses "*": IAM account-level settings have
+  # no ARN to scope to, so AWS rejects a resource-qualified statement for them. Every
+  # other statement in this document names its exact resources.
+  #checkov:skip=CKV_AWS_356:Residual "*" is the IAM account password policy, which AWS does not expose as a resource.
+  #checkov:skip=CKV_AWS_111:Same statement. iam:UpdateAccountPasswordPolicy cannot be resource-constrained.
+
   statement {
     sid    = "ManageBootstrapStateBucket"
     effect = "Allow"
@@ -226,7 +233,11 @@ data "aws_iam_policy_document" "github_deploy" {
       "budgets:TagResource",
       "budgets:UntagResource"
     ]
-    resources = ["*"]
+    # AWS Budgets supports resource-level permissions, so name the one budget this
+    # role may touch rather than granting it every budget in the account. Take the
+    # ARN from the resource itself instead of assembling it from parts, so the
+    # policy cannot drift from the budget it is meant to describe.
+    resources = [aws_budgets_budget.monthly.arn]
   }
 }
 
