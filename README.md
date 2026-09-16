@@ -10,7 +10,8 @@ repositories listed by the control plane's `REPOSITORIES.md`.
 
 - `bootstrap/`: remote Terraform state, AWS Budget alerts, and the IAM account
   password policy.
-- `docs/architecture/`: infrastructure-specific architecture decisions.
+- `docs/architecture/`: infrastructure-specific architecture decisions, including
+  the costed Frankfurt network, audit and Databricks foundation proposal.
 - `docs/security/checkov-exceptions.md`: every accepted policy-scan exception, with
   its residual risk and the trigger that would make us revisit it.
 - `docs/runbooks/break-glass.md`: what to do when the deployment pipeline cannot

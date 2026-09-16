@@ -242,9 +242,25 @@ a separate, monitored emergency-access role with alerting on every use.
 - Wrote `docs/runbooks/break-glass.md` from the failure that produced it, including
   the known weaknesses of the current path and the enterprise target.
 
+- Designed and costed the Frankfurt network, audit and Databricks foundations in
+  `docs/architecture/frankfurt-foundation.md`. Nothing is deployed; it is a proposal
+  with an explicit approval gate because steps beyond the audit baseline can create
+  chargeable resources.
+- Key finding: the budget is consumed by two specific things, not by the platform as
+  a whole. A NAT Gateway costs roughly USD 37 per month before any data is processed,
+  and Databricks compute left running is the most likely way to breach the ceiling.
+  Everything else in the next layer is close to free.
+- Recommended order: build the audit baseline first (about USD 1 per month, no hourly
+  resources), keep the network serverless so no VPC is needed at all, and treat
+  Databricks as a time-boxed exercise with auto-termination and a hard stop.
+
 ## Next action
 
-1. Design and cost the Frankfurt network, audit and Databricks foundations.
-2. Produce the threat model, control matrix and responsibility matrix.
-3. Rehearse the break-glass runbook deliberately, rather than only ever having
+1. Decide whether to build the audit baseline (CloudTrail management trail plus a
+   protected log bucket). It is the one part recommended without further cost
+   discussion.
+2. Answer the three open Databricks questions, especially whether the AWS credit
+   covers Databricks charges, since that changes the effective budget.
+3. Produce the threat model, control matrix and responsibility matrix.
+4. Rehearse the break-glass runbook deliberately, rather than only ever having
    executed it under failure.
