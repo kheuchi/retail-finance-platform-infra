@@ -159,6 +159,54 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
+    sid    = "ManageAuditLogBucket"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucketPolicy",
+      "s3:GetAccelerateConfiguration",
+      "s3:GetAnalyticsConfiguration",
+      "s3:GetBucket*",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetIntelligentTieringConfiguration",
+      "s3:GetInventoryConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetMetricsConfiguration",
+      "s3:GetObject",
+      "s3:GetReplicationConfiguration",
+      "s3:ListBucket",
+      "s3:PutBucket*",
+      "s3:PutEncryptionConfiguration",
+      "s3:PutLifecycleConfiguration"
+    ]
+    resources = [
+      local.audit_bucket_arn,
+      "${local.audit_bucket_arn}/*"
+    ]
+  }
+
+  statement {
+    sid    = "ManageManagementEventTrail"
+    effect = "Allow"
+    actions = [
+      "cloudtrail:AddTags",
+      "cloudtrail:CreateTrail",
+      "cloudtrail:DeleteTrail",
+      "cloudtrail:DescribeTrails",
+      "cloudtrail:GetEventSelectors",
+      "cloudtrail:GetTrail",
+      "cloudtrail:GetTrailStatus",
+      "cloudtrail:ListTags",
+      "cloudtrail:PutEventSelectors",
+      "cloudtrail:RemoveTags",
+      "cloudtrail:StartLogging",
+      "cloudtrail:StopLogging",
+      "cloudtrail:UpdateTrail"
+    ]
+    resources = [local.audit_trail_arn]
+  }
+
+  statement {
     sid       = "ManageAccountBootstrapControls"
     effect    = "Allow"
     actions   = ["iam:GetAccountPasswordPolicy", "iam:UpdateAccountPasswordPolicy"]

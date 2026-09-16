@@ -1,5 +1,14 @@
 locals {
   state_bucket_name = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  audit_bucket_name = "${var.project_name}-cloudtrail-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  audit_trail_name  = "${var.project_name}-management-events"
+
+  # Built from parts rather than from the resources themselves, so the deploy role
+  # can be granted these permissions in a separate, earlier apply than the one that
+  # creates the resources. A role cannot create what it has no permission for, and
+  # Terraform does not guarantee it updates that role before using it.
+  audit_bucket_arn = "arn:${data.aws_partition.current.partition}:s3:::${local.audit_bucket_name}"
+  audit_trail_arn  = "arn:${data.aws_partition.current.partition}:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${local.audit_trail_name}"
   budget_notifications = var.budget_alert_email == null ? [] : [
     { threshold = 50, type = "ACTUAL" },
     { threshold = 80, type = "ACTUAL" },
