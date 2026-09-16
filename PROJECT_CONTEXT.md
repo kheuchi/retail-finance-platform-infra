@@ -190,10 +190,33 @@ Two operating notes for anyone reproducing this:
 - Added the missing read actions, all scoped to the state bucket and the project
   Budget. This is the value of exercising an apply path rather than assuming a
   configured role works.
-- Applying this correction needs the workstation admin session, because the deploy
-  role cannot repair its own permissions while the missing permissions block its
-  plan. The local browser session had expired, so this step is pending
-  re-authentication.
+- Applied the correction from the workstation admin session using `-target` scoped to
+  the single role policy: 0 added, 1 changed, 0 destroyed. Targeting is normally
+  discouraged, but Terraform documents it for exactly this case, recovering from an
+  error. The Budget change was deliberately left unapplied locally so the pipeline
+  would have real work to do.
+- Proved the apply path end to end. `deploy-bootstrap.yml` assumed the deploy role
+  through OIDC, planned, and applied the saved plan: 0 added, 1 changed, 0 destroyed.
+  The deploy role has now actually deployed something, not merely been configured.
+- Verified the result directly against AWS: all three Budget alerts survive (50% and
+  80% actual, 100% forecasted), the subscriber is the new personal address, the
+  ceiling is USD 50 against USD 0.001 observed spend, and a refresh plan reports no
+  drift.
+
+### Break-glass requirement (recorded as a design gap)
+
+The deploy role could not repair its own permissions, because the missing permissions
+were what blocked its plan. Recovery required a human administrator session.
+
+Plain words: the automation cannot always fix itself, so a separate human path must
+stay available and must be tested. A CI role that is the only way to change
+infrastructure becomes a single point of failure the first time its own policy is
+wrong.
+
+Current break-glass path: the named IAM user `cheikh-platform-admin` authenticating
+through a short-lived browser session, then `scripts/plan-bootstrap-remote.sh` and
+`scripts/apply-bootstrap.sh`. It uses no stored access keys. The enterprise target is
+a separate, monitored emergency-access role with alerting on every use.
 
 ## Verified security and cost position
 
@@ -209,7 +232,7 @@ Two operating notes for anyone reproducing this:
 
 ## Next action
 
-1. Exercise the deploy role once through `deploy-bootstrap.yml` to prove the apply
-   path, since only the plan role has been verified against AWS so far.
-2. Triage the seven Checkov findings and record justified exceptions or fixes.
-3. Design and cost the Frankfurt network, audit and Databricks foundations.
+1. Triage the Checkov findings and record justified exceptions or fixes.
+2. Design and cost the Frankfurt network, audit and Databricks foundations.
+3. Document the break-glass procedure as a runbook and rehearse it deliberately,
+   rather than only having discovered it under failure.
