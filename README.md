@@ -11,6 +11,10 @@ repositories listed by the control plane's `REPOSITORIES.md`.
 - `bootstrap/`: remote Terraform state, AWS Budget alerts, and the IAM account
   password policy.
 - `docs/architecture/`: infrastructure-specific architecture decisions.
+- `docs/security/checkov-exceptions.md`: every accepted policy-scan exception, with
+  its residual risk and the trigger that would make us revisit it.
+- `docs/runbooks/break-glass.md`: what to do when the deployment pipeline cannot
+  repair itself and a human must intervene directly.
 - `.github/workflows/ci.yml`: Terraform checks, advisory Checkov, and automated
   semantic releases.
 - `.github/workflows/deploy-bootstrap.yml`: manually gated, OIDC-authenticated

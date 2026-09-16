@@ -230,9 +230,21 @@ a separate, monitored emergency-access role with alerting on every use.
 - Resources created to date: one S3 state bucket, one AWS Budget, one IAM password
   policy, one OIDC provider and two IAM roles. None are hourly-billed.
 
+- Triaged the policy scan. Fixed the two findings that were real defects: the state
+  bucket lifecycle now aborts incomplete multipart uploads after 7 days, and the
+  deploy role's Budgets statement is scoped to the project budget ARN instead of
+  `"*"`. Recorded the remaining five as explicit, justified exceptions in
+  `docs/security/checkov-exceptions.md`, each with its residual risk and revisit
+  trigger. Checkov now reports 90 passed, 0 failed, 6 deliberate skips.
+- Verified the tightened deploy role still works by re-running the deployment
+  pipeline: it planned with no drift and applied cleanly. Narrowing a permission
+  without retesting the path that uses it would have been a guess.
+- Wrote `docs/runbooks/break-glass.md` from the failure that produced it, including
+  the known weaknesses of the current path and the enterprise target.
+
 ## Next action
 
-1. Triage the Checkov findings and record justified exceptions or fixes.
-2. Design and cost the Frankfurt network, audit and Databricks foundations.
-3. Document the break-glass procedure as a runbook and rehearse it deliberately,
-   rather than only having discovered it under failure.
+1. Design and cost the Frankfurt network, audit and Databricks foundations.
+2. Produce the threat model, control matrix and responsibility matrix.
+3. Rehearse the break-glass runbook deliberately, rather than only ever having
+   executed it under failure.
