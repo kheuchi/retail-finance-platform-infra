@@ -179,6 +179,22 @@ Two operating notes for anyone reproducing this:
   built is now the delivery path, and a stale laptop session no longer blocks a
   change. This is also the first real exercise of the deploy role.
 
+- First deploy-role dispatch failed safely during the plan phase, before changing
+  anything. It exposed a real gap: the deploy policy was missing
+  `s3:GetAccelerateConfiguration` and `budgets:ListTagsForResource`. Plain words: the
+  role could change those resources but could not finish *reading* them, and
+  Terraform refreshes before it plans. The S3 gap exists because several bucket
+  sub-configuration IAM actions do not begin with `GetBucket`, so the existing
+  `s3:GetBucket*` wildcard never matched them; budget tagging is likewise a separate
+  action family from `ModifyBudget`/`ViewBudget`.
+- Added the missing read actions, all scoped to the state bucket and the project
+  Budget. This is the value of exercising an apply path rather than assuming a
+  configured role works.
+- Applying this correction needs the workstation admin session, because the deploy
+  role cannot repair its own permissions while the missing permissions block its
+  plan. The local browser session had expired, so this step is pending
+  re-authentication.
+
 ## Verified security and cost position
 
 - No AWS access keys exist in GitHub. Both workflows use short-lived OIDC sessions.

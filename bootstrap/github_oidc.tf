@@ -129,6 +129,15 @@ data "aws_iam_policy_document" "github_deploy" {
       "s3:GetEncryptionConfiguration",
       "s3:GetLifecycleConfiguration",
       "s3:GetObject",
+      # The provider reads every bucket sub-configuration on refresh, and these
+      # IAM action names do not begin with "GetBucket", so the wildcard misses
+      # them. They are read-only and scoped to the state bucket below.
+      "s3:GetAccelerateConfiguration",
+      "s3:GetAnalyticsConfiguration",
+      "s3:GetIntelligentTieringConfiguration",
+      "s3:GetInventoryConfiguration",
+      "s3:GetMetricsConfiguration",
+      "s3:GetReplicationConfiguration",
       "s3:ListBucket",
       "s3:ListBucketVersions",
       "s3:PutBucket*",
@@ -206,9 +215,17 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
-    sid       = "ManageProjectBudget"
-    effect    = "Allow"
-    actions   = ["budgets:ModifyBudget", "budgets:ViewBudget"]
+    sid    = "ManageProjectBudget"
+    effect = "Allow"
+    actions = [
+      "budgets:ModifyBudget",
+      "budgets:ViewBudget",
+      # Budget tagging is a separate action family from ModifyBudget/ViewBudget.
+      # The provider lists tags on every Budget refresh.
+      "budgets:ListTagsForResource",
+      "budgets:TagResource",
+      "budgets:UntagResource"
+    ]
     resources = ["*"]
   }
 }
