@@ -220,6 +220,33 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
+    sid    = "ManageDatabricksStorage"
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucketPolicy",
+      "s3:GetAccelerateConfiguration",
+      "s3:GetAnalyticsConfiguration",
+      "s3:GetBucket*",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetIntelligentTieringConfiguration",
+      "s3:GetInventoryConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetMetricsConfiguration",
+      "s3:GetObject",
+      "s3:GetReplicationConfiguration",
+      "s3:ListBucket",
+      "s3:PutBucket*",
+      "s3:PutEncryptionConfiguration",
+      "s3:PutLifecycleConfiguration"
+    ]
+    resources = concat(
+      local.databricks_bucket_arns,
+      [for arn in local.databricks_bucket_arns : "${arn}/*"]
+    )
+  }
+
+  statement {
     sid    = "ManageAuditLogGroup"
     effect = "Allow"
     actions = [
