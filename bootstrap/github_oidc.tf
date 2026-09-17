@@ -220,6 +220,114 @@ data "aws_iam_policy_document" "github_deploy" {
   }
 
   statement {
+    sid    = "ManageAuditLogGroup"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:DeleteLogGroup",
+      "logs:DeleteMetricFilter",
+      "logs:DeleteRetentionPolicy",
+      "logs:ListTagsForResource",
+      "logs:PutMetricFilter",
+      "logs:PutRetentionPolicy",
+      "logs:TagResource",
+      "logs:UntagResource"
+    ]
+    resources = [
+      local.audit_log_group_arn,
+      "${local.audit_log_group_arn}:*"
+    ]
+  }
+
+  statement {
+    sid    = "ManageSecurityAlerting"
+    effect = "Allow"
+    actions = [
+      "cloudwatch:DeleteAlarms",
+      "cloudwatch:PutMetricAlarm",
+      "cloudwatch:TagResource",
+      "cloudwatch:UntagResource"
+    ]
+    resources = [local.alarm_arn_prefix]
+  }
+
+  statement {
+    sid    = "ManageSecurityTopic"
+    effect = "Allow"
+    actions = [
+      "sns:CreateTopic",
+      "sns:DeleteTopic",
+      "sns:GetSubscriptionAttributes",
+      "sns:GetTopicAttributes",
+      "sns:ListSubscriptionsByTopic",
+      "sns:ListTagsForResource",
+      "sns:SetTopicAttributes",
+      "sns:Subscribe",
+      "sns:TagResource",
+      "sns:Unsubscribe",
+      "sns:UntagResource"
+    ]
+    resources = [
+      local.security_topic_arn,
+      "${local.security_topic_arn}:*"
+    ]
+  }
+
+  statement {
+    sid    = "ManageCloudTrailLogsRole"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:DeleteRolePolicy",
+      "iam:GetRole",
+      "iam:GetRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListRolePolicies",
+      "iam:ListRoleTags",
+      "iam:PutRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole"
+    ]
+    resources = [local.audit_cwl_role_arn]
+  }
+
+  statement {
+    # CloudTrail is handed this role when the trail is wired to CloudWatch Logs, so
+    # the deploy role must be allowed to pass it. Unscoped PassRole is a privilege
+    # escalation path, so it is narrowed to this one role and further restricted to
+    # the CloudTrail service: the role cannot be passed to anything else.
+    sid       = "PassCloudTrailLogsRole"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [local.audit_cwl_role_arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:PassedToService"
+      values   = ["cloudtrail.amazonaws.com"]
+    }
+  }
+
+  statement {
+    # Enumeration calls with no AWS-defined resource type, so a scoped ARN is
+    # rejected and "*" is the only expressible form. All are read-only and return
+    # configuration, not data. Keeping them in their own statement makes the
+    # unavoidable wildcards easy to audit against the write statements above.
+    sid    = "ReadAlertingConfiguration"
+    effect = "Allow"
+    actions = [
+      "cloudwatch:DescribeAlarms",
+      "cloudwatch:ListTagsForResource",
+      "logs:DescribeLogGroups",
+      "logs:DescribeMetricFilters"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid       = "ManageAccountBootstrapControls"
     effect    = "Allow"
     actions   = ["iam:GetAccountPasswordPolicy", "iam:UpdateAccountPasswordPolicy"]

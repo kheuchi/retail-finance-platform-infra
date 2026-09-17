@@ -9,6 +9,15 @@ locals {
   # Terraform does not guarantee it updates that role before using it.
   audit_bucket_arn = "arn:${data.aws_partition.current.partition}:s3:::${local.audit_bucket_name}"
   audit_trail_arn  = "arn:${data.aws_partition.current.partition}:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${local.audit_trail_name}"
+
+  audit_log_group_name = "/aws/cloudtrail/${var.project_name}"
+  audit_cwl_role_name  = "${var.project_name}-cloudtrail-logs"
+  security_topic_name  = "${var.project_name}-security-alerts"
+
+  audit_log_group_arn = "arn:${data.aws_partition.current.partition}:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:${local.audit_log_group_name}"
+  audit_cwl_role_arn  = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${local.audit_cwl_role_name}"
+  security_topic_arn  = "arn:${data.aws_partition.current.partition}:sns:${var.aws_region}:${data.aws_caller_identity.current.account_id}:${local.security_topic_name}"
+  alarm_arn_prefix    = "arn:${data.aws_partition.current.partition}:cloudwatch:${var.aws_region}:${data.aws_caller_identity.current.account_id}:alarm:${var.project_name}-*"
   budget_notifications = var.budget_alert_email == null ? [] : [
     { threshold = 50, type = "ACTUAL" },
     { threshold = 80, type = "ACTUAL" },
