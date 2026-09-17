@@ -304,6 +304,17 @@ a separate, monitored emergency-access role with alerting on every use.
   emitting datapoints, both alarms in OK rather than INSUFFICIENT_DATA because the
   filters declare a default value of zero, and a refresh plan showing no drift.
 - Checkov: 161 passed, 0 failed, 16 recorded exceptions.
+- Tested the break-glass detection rather than assuming it worked, by tagging and
+  immediately untagging an IAM role as the administrator identity. Both `TagRole` and
+  `UntagRole` matched the deployed filter and the alarm entered ALARM on a datapoint
+  of 2 against a threshold of 1. Delivery latency from the API call to the alarm
+  state change was a few minutes.
+- Two findings from that test are worth keeping. `$.readOnly = false` matches nothing
+  in CloudWatch Logs filter syntax; the boolean form is `$.readOnly IS FALSE`, and the
+  wrong spelling produces a filter that parses, deploys and silently never fires.
+  Separately, Terraform's S3 state-lock writes are attributed to whichever identity
+  ran the command, so lock traffic from CI appears under the CI roles and is
+  correctly ignored by this detection.
 
 ## Next action
 

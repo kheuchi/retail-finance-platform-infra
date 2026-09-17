@@ -146,6 +146,11 @@ retains the API-level evidence of a break-glass session, and a CloudWatch metric
 filter raises an alarm on any write performed by this identity, delivered by email.
 Use of this runbook is therefore noticed, not merely recorded.
 
+That detection was verified on 2026-09-17 by performing a write as this identity and
+confirming the alarm fired, rather than by assuming the filter was correct. Expect a
+few minutes between the API call and the alarm; CloudTrail delivery is not instant,
+so an operator using this path should not expect to be paged immediately.
+
 ## Enterprise target
 
 - A dedicated emergency-access role, assumable only with MFA, separate from any
