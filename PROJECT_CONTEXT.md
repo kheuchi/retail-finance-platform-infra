@@ -316,13 +316,34 @@ a separate, monitored emergency-access role with alerting on every use.
   ran the command, so lock traffic from CI appears under the CI roles and is
   correctly ignored by this detection.
 
+- Security-alerts email subscription confirmed. The alarms now reach a real inbox;
+  the confirmation had gone to spam.
+- Built the Databricks storage prerequisites: workspace root storage and the Unity
+  Catalog managed location, both with the estate's standard protections and both
+  verified against AWS. Empty buckets cost nothing and both sit on the critical path.
+- Stopped deliberately short of the IAM. The Databricks cross-account role, the Unity
+  Catalog storage credential role and the Databricks statements on both bucket
+  policies are all conditioned on the Databricks account ID, which does not exist
+  until the account is created. Writing IAM against an identifier that does not exist
+  means shipping something that can be neither applied nor tested, and both earlier
+  permission failures in this project surfaced only at runtime.
+- Caught an S3 naming limit before anything was created: the full descriptive names
+  reached 65 characters against a 63-character cap. Shortened with the reason
+  recorded rather than left as unexplained abbreviations.
+- The bucket rename had to ship on its own, ahead of the buckets, so the deploy
+  role's permissions named the new paths first. Terraform does not order a role
+  policy update ahead of the resources depending on it. Third instance of the same
+  class of problem, handled without a break-glass this time.
+- Checkov: 200 passed, 0 failed, 24 recorded exceptions.
+
 ## Next action
 
-1. Confirm the SNS email subscription. AWS sends a confirmation link and the
-   subscription delivers nothing until it is clicked.
-2. Prepare the Databricks AWS-side prerequisites, the workspace bucket and the
-   cross-account role, before starting the 14-day trial so the trial window is spent
-   on lakehouse work rather than setup.
+1. Decide when to start the Databricks trial. It is USD 400 valid for 14 days, the
+   AWS credit does not cover Databricks, and the clock starts at sign-up, so begin it
+   only when there is a clear run at the build.
+2. Supply the Databricks account ID, after which the remaining IAM and the workspace
+   can be built and tested in one pass.
+3. Produce the threat model, control matrix and responsibility matrix.
 2. Answer the three open Databricks questions, especially whether the AWS credit
    covers Databricks charges, since that changes the effective budget.
 3. Produce the threat model, control matrix and responsibility matrix.

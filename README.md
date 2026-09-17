@@ -16,6 +16,8 @@ repositories listed by the control plane's `REPOSITORIES.md`.
   its residual risk and the trigger that would make us revisit it.
 - `docs/runbooks/break-glass.md`: what to do when the deployment pipeline cannot
   repair itself and a human must intervene directly.
+- `docs/architecture/databricks-prerequisites.md`: what the lakehouse needs from
+  AWS, what is already built, and the one value still required to finish it.
 - `.github/workflows/ci.yml`: Terraform checks, advisory Checkov, and automated
   semantic releases.
 - `.github/workflows/deploy-bootstrap.yml`: manually gated, OIDC-authenticated
