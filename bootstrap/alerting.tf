@@ -19,6 +19,7 @@ resource "aws_cloudwatch_log_group" "audit" {
 
   # Accepted, reviewed exception. See docs/security/checkov-exceptions.md.
   #checkov:skip=CKV_AWS_158:A customer-managed KMS key carries a fixed monthly charge against a USD 50 ceiling. The durable copy of this data is the S3 trail bucket, which is encrypted and retained far longer.
+  #checkov:skip=CKV_AWS_338:This copy exists to trigger alarms in near real time, not to be the system of record. The year of retention the check wants is held in S3, where storage is far cheaper than CloudWatch Logs.
 }
 
 # CloudTrail cannot write to CloudWatch Logs on its own authority; it assumes this

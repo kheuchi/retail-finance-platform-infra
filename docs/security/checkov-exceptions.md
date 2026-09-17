@@ -34,7 +34,10 @@ integration, is deferred rather than rejected and is the next planned increment.
 | CKV_AWS_145 | State bucket | Accepted risk, cost-driven |
 | CKV_AWS_252 | CloudTrail trail | Not applicable |
 | CKV_AWS_35 | CloudTrail trail | Accepted risk, cost-driven |
-| CKV2_AWS_10 | CloudTrail trail | **Deferred, wanted next** |
+| CKV2_AWS_10 | CloudTrail trail | Resolved: CloudWatch Logs integration built |
+| CKV_AWS_158 | Audit log group | Accepted risk, cost-driven |
+| CKV_AWS_338 | Audit log group | Rejected: S3 is the system of record |
+| CKV_AWS_26 | Security alerts topic | Accepted risk, cost-driven |
 
 ## Fixed
 
@@ -134,7 +137,32 @@ IAM role for CloudTrail to write through, which means more deploy-role permissio
 Deferred only to keep this change small after two permission-scoping corrections in
 one session. It is the recommended next increment of the audit baseline.
 
-Revisit: next, and deliberately.
+**Resolved on 2026-09-17.** The trail now streams to CloudWatch Logs, with metric
+filters and alarms on break-glass administrator writes and on root account use.
+See `alerting.tf`.
+
+### CKV_AWS_158 / CKV_AWS_338 / CKV_AWS_26 — the alerting layer
+
+Three findings on the CloudWatch log group and the SNS topic, all the same trade-off
+in different clothes.
+
+`CKV_AWS_158` wants the log group encrypted with a customer-managed KMS key, and
+`CKV_AWS_26` wants the same for the SNS topic. Both add a fixed monthly charge plus
+per-request cost against a USD 50 ceiling. The SNS messages are alarm state changes
+naming an event type; they do not carry log contents.
+
+`CKV_AWS_338` wants at least a year of retention in CloudWatch Logs. That misreads
+what this copy is for. CloudWatch Logs here is the trigger mechanism, not the system
+of record: events stream in so metric filters can match them within minutes. The
+durable year of history lives in S3, where storage is an order of magnitude cheaper.
+Keeping a year in both would pay twice for the same evidence.
+
+Residual risk: no key-level audit or revocation on the alerting path, and the
+CloudWatch copy of events older than 90 days is gone. The S3 copy is unaffected.
+
+Revisit when: the KMS decision is taken for the state and trail buckets, since one
+key can serve all of them; or if an investigation ever needs metric-filter matching
+over data older than 90 days, which S3 and Athena would serve better anyway.
 
 ## Rejected
 
