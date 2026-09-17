@@ -10,8 +10,12 @@ locals {
   audit_bucket_arn = "arn:${data.aws_partition.current.partition}:s3:::${local.audit_bucket_name}"
   audit_trail_arn  = "arn:${data.aws_partition.current.partition}:cloudtrail:${var.aws_region}:${data.aws_caller_identity.current.account_id}:trail/${local.audit_trail_name}"
 
-  databricks_root_bucket_name = "${var.project_name}-databricks-root-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
-  unity_catalog_bucket_name   = "${var.project_name}-unity-catalog-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  # S3 caps bucket names at 63 characters, and the project name plus account plus
+  # region already consumes 49 of them. "dbx" is Databricks and "uc" is Unity
+  # Catalog; the full words do not fit alongside the account and region suffixes
+  # that every other bucket in this project carries.
+  databricks_root_bucket_name = "${var.project_name}-dbx-root-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
+  unity_catalog_bucket_name   = "${var.project_name}-dbx-uc-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
 
   databricks_bucket_arns = [
     "arn:${data.aws_partition.current.partition}:s3:::${local.databricks_root_bucket_name}",
