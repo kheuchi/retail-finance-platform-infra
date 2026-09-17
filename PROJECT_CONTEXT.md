@@ -281,11 +281,37 @@ a separate, monitored emergency-access role with alerting on every use.
   against whether each individual action supports resource-level permissions at all.
   Several do not, and the failure only appears at runtime.
 
+### 2026-09-17
+
+- Built the alerting layer, turning the trail from a record into a signal. CloudTrail
+  now also streams to CloudWatch Logs, where metric filters match events as they
+  arrive and alarms publish to an email topic.
+- Two detections. A write performed by the break-glass administrator identity, since
+  routine change is expected to arrive through CI rather than from a workstation; it
+  matches on `readOnly` being false, so merely looking at something raises nothing.
+  And any use of the root account, which decision D-007 forbids, excluding AWS
+  services acting on the account's behalf so the alarm stays credible.
+- This closes the gap the break-glass runbook named. Emergency access is now noticed,
+  not merely recorded after the fact. The runbook's weakness list was updated to say
+  so rather than leaving a stale claim.
+- `iam:PassRole` is required so CloudTrail can be handed its logging role. Unscoped
+  it is a privilege-escalation path, so it is narrowed to that single role and
+  conditioned on `iam:PassedToService` being `cloudtrail.amazonaws.com`.
+- The two-phase apply worked this time: permissions first, then resources, 10 added
+  and 1 changed in one clean pipeline run with no permission failure and no
+  break-glass recovery.
+- Verified: CloudWatch delivery succeeding with no error, both metric filters
+  emitting datapoints, both alarms in OK rather than INSUFFICIENT_DATA because the
+  filters declare a default value of zero, and a refresh plan showing no drift.
+- Checkov: 161 passed, 0 failed, 16 recorded exceptions.
+
 ## Next action
 
-1. Integrate the trail with CloudWatch Logs and add a metric filter and alarm on
-   break-glass role assumption. This is the deferred Checkov finding CKV2_AWS_10 and
-   it closes the alerting gap the runbook names.
+1. Confirm the SNS email subscription. AWS sends a confirmation link and the
+   subscription delivers nothing until it is clicked.
+2. Prepare the Databricks AWS-side prerequisites, the workspace bucket and the
+   cross-account role, before starting the 14-day trial so the trial window is spent
+   on lakehouse work rather than setup.
 2. Answer the three open Databricks questions, especially whether the AWS credit
    covers Databricks charges, since that changes the effective budget.
 3. Produce the threat model, control matrix and responsibility matrix.

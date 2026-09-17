@@ -139,11 +139,12 @@ hidden:
 
 - The break-glass identity is a broad administrator, not a narrowly scoped emergency
   role.
-- Its use raises no alert. Detection depends on someone reading this repository.
-- There is no CloudTrail trail in the account yet, so the API-level evidence of a
-  break-glass session is not being retained.
-- One person holds both the normal and the emergency path, so there is no separation
-  of duties.
+- One person holds both the normal and the emergency path.
+
+Two weaknesses listed here previously are now closed. A multi-region CloudTrail
+retains the API-level evidence of a break-glass session, and a CloudWatch metric
+filter raises an alarm on any write performed by this identity, delivered by email.
+Use of this runbook is therefore noticed, not merely recorded.
 
 ## Enterprise target
 
