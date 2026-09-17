@@ -182,6 +182,12 @@ resource "aws_cloudtrail" "management_events" {
   # Lets us prove afterwards that a log file was not altered or removed. Free.
   enable_log_file_validation = true
 
+  # Stream events to CloudWatch Logs as well as S3. S3 remains the durable record;
+  # this copy exists so metric filters can match events as they arrive and raise an
+  # alarm. See alerting.tf.
+  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.audit.arn}:*"
+  cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_logs.arn
+
   event_selector {
     read_write_type           = "All"
     include_management_events = true

@@ -49,6 +49,27 @@ variable "budget_alert_email" {
   }
 }
 
+variable "break_glass_user_name" {
+  description = <<-EOT
+  IAM user that constitutes the break-glass administrator path. Any write action by
+  this identity raises an alarm, because routine changes are expected to arrive
+  through CI rather than from a workstation.
+  EOT
+  type        = string
+  default     = "cheikh-platform-admin"
+}
+
+variable "audit_log_retention_days" {
+  description = "How long CloudTrail events are kept in CloudWatch Logs. Ingestion and storage are billed, so this is deliberately shorter than the 365-day retention in S3, which stays the durable record."
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = contains([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180], var.audit_log_retention_days)
+    error_message = "Use a CloudWatch Logs retention value of 180 days or fewer to bound cost."
+  }
+}
+
 variable "github_organization" {
   description = "GitHub organization or user that owns the infrastructure repository."
   type        = string
