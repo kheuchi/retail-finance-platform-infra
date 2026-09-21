@@ -51,15 +51,21 @@ Two operating notes for anyone reproducing this:
 
 - `aws` is installed under `~/.local/bin`, so non-login shells must export
   `PATH="$HOME/.local/bin:$PATH"` first. Every script in `scripts/` already does.
-- A second, expired `gh` account (`stale-work-account`) is still present in
-  `~/.config/gh/hosts.yml`. `kheuchi` is the active account; the stale entry reports
-  an invalid token and should be removed with `gh auth logout` to avoid confusion.
+- A second, expired `gh` account is still present in `~/.config/gh/hosts.yml`.
+  `kheuchi` is the active account; the stale entry reports an invalid token and
+  should be removed with `gh auth logout` to avoid confusion. Its name is not
+  reproduced here because it identifies an employer.
 
 ## Operating rules
 
 1. Use the `retail-platform-admin` AWS CLI profile; never use root.
-2. Never store credentials or state in Git.
+2. Never store credentials or state in Git. This repository is public as of
+   2026-09-21; treat everything committed here as readable by anyone.
 3. Review plans before applies and require an explicit human gate for production.
+3a. `main` is protected and cannot be pushed to directly, including by an
+   administrator. Every change goes through a pull request whose `Terraform checks`
+   and `Checkov advisory scan` must pass, on a branch that is up to date with `main`.
+   Force pushes and branch deletion are blocked and history must stay linear.
 4. Avoid persistent hourly resources unless their cost is documented and approved.
 5. Do not use the default VPC for workloads.
 6. Keep reusable modules separate from environment compositions.
