@@ -27,6 +27,21 @@ The bootstrap stack is deployed in `eu-central-1` and uses a protected remote
 backend. GitHub plans and deployments use temporary OIDC role sessions; no AWS
 access keys are stored in GitHub.
 
+## Security assurance
+
+The threat model, control matrix and responsibility matrix covering this
+infrastructure live in the control-plane repository under `docs/security/`. They sit
+there rather than here because they span repositories rather than describing this one
+alone, and every control marked implemented in that matrix points back at a file in
+`bootstrap/`.
+
+Four gaps are currently open against this repository and its pipeline, two of them
+rated Critical, and both Critical ones are in GitHub rather than in AWS:
+two-factor authentication is off on the owning account, and nothing technically
+prevents an unreviewed push to `main` — the branch this repository's AWS trust policy
+accepts. The typed `apply` confirmation on the deploy workflow is a typo guard, not
+an authorisation control. See the control-plane threat model for the full record.
+
 ## Safety rule
 
 Run `terraform plan` and review persistent-cost resources before every apply.
