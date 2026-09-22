@@ -99,3 +99,36 @@ variable "github_deploy_environment" {
   type        = string
   default     = "aws-bootstrap"
 }
+
+variable "enable_databricks_network" {
+  description = <<-EOT
+  Whether to create the customer-managed VPC for the Databricks classic compute
+  plane. Defaults to false so that nothing in databricks_network.tf exists, and
+  nothing bills, until the Databricks account is ready to consume it.
+
+  The running cost when enabled is the two interface VPC endpoints, roughly USD 15
+  per month. The VPC, subnets, route tables, security groups, S3 gateway endpoint
+  and flow logs are free. There is no NAT gateway, by design.
+
+  Turning this on is a deliberate, reviewed act: change it in terraform.tfvars, or
+  as a CI variable, and let the pipeline plan it before applying.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "databricks_vpc_cidr" {
+  description = <<-EOT
+  Address range for the Databricks customer-managed VPC. Databricks requires the
+  VPC to sit between /25 and /16, and each workspace subnet between /17 and /26.
+  A /16 is used so the two workspace subnets can be /22 without crowding the two
+  small endpoint subnets carved from the same space.
+  EOT
+  type        = string
+  default     = "10.20.0.0/16"
+
+  validation {
+    condition     = can(cidrnetmask(var.databricks_vpc_cidr)) && tonumber(split("/", var.databricks_vpc_cidr)[1]) >= 16 && tonumber(split("/", var.databricks_vpc_cidr)[1]) <= 25
+    error_message = "databricks_vpc_cidr must be a valid CIDR with a prefix length between /16 and /25, which is the range Databricks supports for a customer-managed VPC."
+  }
+}
