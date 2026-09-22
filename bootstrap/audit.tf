@@ -134,6 +134,55 @@ data "aws_iam_policy_document" "audit_logs" {
     }
   }
 
+  # VPC flow logs land in the same protected bucket as the trail, under their own
+  # prefix. The delivery service writes them, so it needs the same pair of grants
+  # CloudTrail has: read the bucket ACL to confirm the target, then put objects.
+  # Both are narrowed by source account so no other account's delivery service can
+  # write here.
+  statement {
+    sid    = "AWSLogDeliveryAclCheck"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["delivery.logs.amazonaws.com"]
+    }
+
+    actions   = ["s3:GetBucketAcl"]
+    resources = [aws_s3_bucket.audit_logs.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+  }
+
+  statement {
+    sid    = "AWSLogDeliveryWrite"
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["delivery.logs.amazonaws.com"]
+    }
+
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.audit_logs.arn}/vpc-flow-logs/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+
   statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"

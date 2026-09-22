@@ -38,6 +38,7 @@ integration, is deferred rather than rejected and is the next planned increment.
 | CKV_AWS_158 | Audit log group | Accepted risk, cost-driven |
 | CKV_AWS_338 | Audit log group | Rejected: S3 is the system of record |
 | CKV_AWS_26 | Security alerts topic | Accepted risk, cost-driven |
+| CKV2_AWS_5 | Databricks workspace security group | Not applicable |
 
 ## Fixed
 
@@ -163,6 +164,27 @@ CloudWatch copy of events older than 90 days is gone. The S3 copy is unaffected.
 Revisit when: the KMS decision is taken for the state and trail buckets, since one
 key can serve all of them; or if an investigation ever needs metric-filter matching
 over data older than 90 days, which S3 and Athena would serve better anyway.
+
+### CKV2_AWS_5 — security group not attached to a resource
+
+The check looks for security groups that exist but are attached to nothing, on the
+reasonable assumption that they are leftovers from a deleted resource.
+
+Not applicable here. `aws_security_group.databricks_workspace` is attached at
+runtime by Databricks, to the EC2 instances it launches for cluster nodes.
+Terraform never creates those instances, so from Terraform's point of view the
+group is permanently unattached. That is the expected steady state of a
+customer-managed VPC, not a leftover.
+
+The paired `aws_security_group.databricks_endpoint` passes the same check, because
+it is attached to the STS and Kinesis interface endpoints, which Terraform does
+create. The contrast is a useful sanity check: if the workspace group were ever
+meant to be attached by Terraform, the endpoint group shows what that looks like.
+
+Residual risk: none. An unattached security group grants nothing.
+
+Revisit when: Terraform ever creates the compute itself, which would mean we had
+stopped using Databricks-managed clusters.
 
 ## Rejected
 

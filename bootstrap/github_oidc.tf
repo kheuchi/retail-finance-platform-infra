@@ -117,12 +117,15 @@ resource "aws_iam_role" "github_deploy" {
 }
 
 data "aws_iam_policy_document" "github_deploy" {
-  # Accepted, reviewed exception. See docs/security/checkov-exceptions.md.
-  # Only the account password policy still uses "*": IAM account-level settings have
-  # no ARN to scope to, so AWS rejects a resource-qualified statement for them. Every
-  # other statement in this document names its exact resources.
-  #checkov:skip=CKV_AWS_356:Residual "*" is the IAM account password policy, which AWS does not expose as a resource.
-  #checkov:skip=CKV_AWS_111:Same statement. iam:UpdateAccountPasswordPolicy cannot be resource-constrained.
+  # Accepted, reviewed exceptions. See docs/security/checkov-exceptions.md.
+  # Three statements still use "*", each because AWS offers no alternative:
+  #   - the IAM account password policy, an account-level setting with no ARN;
+  #   - ec2:Describe* calls, which AWS does not support resource-level permissions for;
+  #   - EC2 network creation, where the resource does not exist until the call
+  #     succeeds. That statement is instead constrained by a RequestTag condition.
+  # Every other statement in this document names its exact resources.
+  #checkov:skip=CKV_AWS_356:Residual "*" is the account password policy and EC2 network actions, neither of which AWS exposes as a scopable resource.
+  #checkov:skip=CKV_AWS_111:Same statements. iam:UpdateAccountPasswordPolicy and ec2:Describe* cannot be resource-constrained.
 
   statement {
     sid    = "ManageBootstrapStateBucket"
@@ -434,6 +437,102 @@ data "aws_iam_policy_document" "github_deploy" {
     # ARN from the resource itself instead of assembling it from parts, so the
     # policy cannot drift from the budget it is meant to describe.
     resources = [aws_budgets_budget.monthly.arn]
+  }
+
+  # Terraform refreshes before it plans, so the role needs to read the network it
+  # manages even on a run that changes nothing. EC2 Describe actions do not support
+  # resource-level permissions at all: AWS rejects any statement that tries to scope
+  # them, so "*" is the only expressible form. They are read-only.
+  statement {
+    sid    = "ReadNetworkInventory"
+    effect = "Allow"
+    actions = [
+      "ec2:DescribeAvailabilityZones",
+      "ec2:DescribeFlowLogs",
+      "ec2:DescribeManagedPrefixLists",
+      "ec2:DescribeNetworkAcls",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DescribePrefixLists",
+      "ec2:DescribeRouteTables",
+      "ec2:DescribeSecurityGroupRules",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeTags",
+      "ec2:DescribeVpcAttribute",
+      "ec2:DescribeVpcEndpoints",
+      "ec2:DescribeVpcs"
+    ]
+    resources = ["*"]
+  }
+
+  # Creating a VPC, a subnet or an endpoint cannot be scoped to the resource being
+  # created, because it has no identifier until the call returns. The lever AWS does
+  # give is a condition on the tags the request carries, so this statement only
+  # permits network changes that are tagged as belonging to this project. The
+  # provider applies those tags from the default_tags block in providers.tf.
+  statement {
+    sid    = "ManageDatabricksNetwork"
+    effect = "Allow"
+    actions = [
+      "ec2:AssociateRouteTable",
+      "ec2:AuthorizeSecurityGroupEgress",
+      "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:CreateFlowLogs",
+      "ec2:CreateRouteTable",
+      "ec2:CreateSecurityGroup",
+      "ec2:CreateSubnet",
+      "ec2:CreateTags",
+      "ec2:CreateVpc",
+      "ec2:CreateVpcEndpoint",
+      "ec2:DeleteFlowLogs",
+      "ec2:DeleteRouteTable",
+      "ec2:DeleteSecurityGroup",
+      "ec2:DeleteSubnet",
+      "ec2:DeleteTags",
+      "ec2:DeleteVpc",
+      "ec2:DeleteVpcEndpoints",
+      "ec2:DisassociateRouteTable",
+      "ec2:ModifySecurityGroupRules",
+      "ec2:ModifySubnetAttribute",
+      "ec2:ModifyVpcAttribute",
+      "ec2:ModifyVpcEndpoint",
+      "ec2:RevokeSecurityGroupEgress",
+      "ec2:RevokeSecurityGroupIngress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsEgress",
+      "ec2:UpdateSecurityGroupRuleDescriptionsIngress"
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Application"
+      values   = [var.project_name]
+    }
+  }
+
+  # The tag condition above cannot apply to the very first call that creates a
+  # resource, because there is no resource yet to carry the tag. AWS evaluates
+  # RequestTag on creation instead. Splitting it this way keeps the delete and
+  # modify actions genuinely constrained to this project's resources.
+  statement {
+    sid    = "CreateDatabricksNetworkResources"
+    effect = "Allow"
+    actions = [
+      "ec2:CreateFlowLogs",
+      "ec2:CreateRouteTable",
+      "ec2:CreateSecurityGroup",
+      "ec2:CreateSubnet",
+      "ec2:CreateTags",
+      "ec2:CreateVpc",
+      "ec2:CreateVpcEndpoint"
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Application"
+      values   = [var.project_name]
+    }
   }
 }
 
