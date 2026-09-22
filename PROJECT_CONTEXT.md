@@ -70,6 +70,9 @@ Two operating notes for anyone reproducing this:
 5. Do not use the default VPC for workloads.
 6. Keep reusable modules separate from environment compositions.
 7. Record every apply, destroy, exception and residual cost in this file.
+8. After any Git history rewrite, run `git fetch --tags --force` and assert that
+   every tag is reachable from the branch before calling the rewrite verified.
+   Verifying against a local clone checks only the refs that clone happens to hold.
 
 ## Communication rules
 
@@ -341,6 +344,64 @@ a separate, monitored emergency-access role with alerting on every use.
   policy update ahead of the resources depending on it. Third instance of the same
   class of problem, handled without a break-glass this time.
 - Checkov: 200 passed, 0 failed, 24 recorded exceptions.
+
+### 2026-09-22
+
+- Built the customer-managed VPC for the Databricks classic compute plane, with no
+  internet gateway and no NAT gateway. Reachability to AWS comes from a free S3
+  gateway endpoint plus interface endpoints for STS and Kinesis. No security group
+  rule permits `0.0.0.0/0`. VPC flow logs go to the existing CloudTrail bucket.
+- Everything is gated behind `enable_databricks_network`, default `false`, so the
+  change merged and was reviewed without creating or billing anything. The
+  post-merge plan was `0 to add, 2 to change, 0 to destroy` — the deploy-role policy
+  and the audit bucket policy only, exactly the first half of the two-phase pattern.
+- Chose the fully-private shape over the standard NAT-based one because it is both
+  the stronger control and the cheaper one: roughly USD 15 per month for two
+  interface endpoints against roughly USD 32 for a NAT gateway.
+
+#### Why this exists: the Azure detour
+
+An Azure Databricks workspace was created on 2026-09-21 to work around the AWS
+Marketplace being unavailable on the Free plan. It deployed a NAT gateway
+automatically, because the Azure trial tier forces a hybrid workspace and disables
+serverless. It began billing at roughly USD 33 per month from the moment the
+deployment finished, with no cluster ever started. The workspace was deleted the
+same day and verified gone.
+
+The generalisable lesson, now recorded in `docs/architecture/databricks-network.md`:
+**the Databricks trial credit covers Databricks licence charges and never the cloud
+infrastructure the workspace creates in your account.** The same trap exists on all
+three clouds; only the price differs.
+
+A second lesson from the same detour: the Azure CLI on this workstation was
+authenticated to an employer tenant, with a corporate subscription set as the
+default. Any `az` command written for "our" Azure would have run against it. The
+credentials were cleared before any write. Mixed work and personal cloud credentials
+on one machine is now recorded as a threat in the control plane's threat model.
+
+#### Incident: orphaned release tags after a history rewrite
+
+Scrubbing the account identifier and an employer name from history on 2026-09-21
+re-pointed only three tags. The repository was at `v1.7.0`; ten tags existed on the
+remote but not in the local clone, so `--tag-name-filter cat` never saw them. They
+continued to point at commits that the rewrite had orphaned.
+
+The failure surfaced two days later: `semantic-release` could reach only `v1.1.0`
+from `main`, recomputed the next version as `v1.2.0`, and died on
+`fatal: tag 'v1.2.0' already exists`. Releases were broken in the meantime.
+
+The root cause is not the rewrite. It is that **the verification was run against
+local state rather than against the remote**, printed the three tags it expected,
+and passed for the wrong reason. A check that can only see part of the system will
+confirm whatever it can see.
+
+Repaired by mapping each orphaned tag onto its rewritten commit by identical subject
+and author date, re-pointing all ten, and confirming every tag is now an ancestor of
+`main`. `v1.8.0` then cut cleanly.
+
+Standing rule added: after any history rewrite, run `git fetch --tags --force` and
+assert that **every** tag is reachable from the branch, before declaring the rewrite
+verified.
 
 ## Next action
 
