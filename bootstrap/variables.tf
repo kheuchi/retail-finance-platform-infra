@@ -110,11 +110,14 @@ variable "enable_databricks_network" {
   per month. The VPC, subnets, route tables, security groups, S3 gateway endpoint
   and flow logs are free. There is no NAT gateway, by design.
 
-  Turning this on is a deliberate, reviewed act: change it in terraform.tfvars, or
-  as a CI variable, and let the pipeline plan it before applying.
+  Turning this on is a deliberate, reviewed act: it is changed here, in a pull
+  request, so the moment the meter started is in Git history.
+
+  Enabled on 2026-09-24 for the Databricks Enterprise trial, which ends on
+  2026-10-06. Set back to false after the trial to stop the endpoint charges.
   EOT
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "databricks_vpc_cidr" {
