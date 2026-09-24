@@ -37,7 +37,14 @@
 # private-ready but not yet connected: a workspace launched against it could not
 # reach the control plane. See docs/architecture/databricks-network.md.
 
+# Gated like everything else in this file, and for a reason worth recording: a
+# data source is read during plan whether or not anything references it, so an
+# ungated one demands its IAM permission before the apply that grants that
+# permission can even be planned. Counting it to zero keeps the permissions-first
+# apply plannable.
 data "aws_availability_zones" "available" {
+  count = local.databricks_network_count
+
   state = "available"
 }
 
@@ -89,14 +96,14 @@ resource "aws_subnet" "databricks_workspace" {
 
   vpc_id            = aws_vpc.databricks[0].id
   cidr_block        = local.databricks_workspace_subnet_cidrs[count.index]
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  availability_zone = data.aws_availability_zones.available[0].names[count.index]
 
   # No public addressing. A node here cannot be reached from, or reach, the
   # internet.
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "${local.databricks_vpc_name}-workspace-${data.aws_availability_zones.available.names[count.index]}"
+    Name = "${local.databricks_vpc_name}-workspace-${data.aws_availability_zones.available[0].names[count.index]}"
     Tier = "workspace"
   }
 }
@@ -106,11 +113,11 @@ resource "aws_subnet" "databricks_endpoint" {
 
   vpc_id                  = aws_vpc.databricks[0].id
   cidr_block              = local.databricks_endpoint_subnet_cidrs[count.index]
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  availability_zone       = data.aws_availability_zones.available[0].names[count.index]
   map_public_ip_on_launch = false
 
   tags = {
-    Name = "${local.databricks_vpc_name}-endpoint-${data.aws_availability_zones.available.names[count.index]}"
+    Name = "${local.databricks_vpc_name}-endpoint-${data.aws_availability_zones.available[0].names[count.index]}"
     Tier = "endpoint"
   }
 }
