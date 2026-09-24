@@ -80,9 +80,12 @@ rendered JSON.
 
 ## Provider notes
 
-- `account_id` is still a required argument on `databricks_mws_storage_configurations`,
-  `databricks_mws_networks` and `databricks_mws_workspaces` in provider 1.134, even
-  though the account-level provider block also carries it.
+- `account_id` is still needed on `databricks_mws_storage_configurations`,
+  `databricks_mws_networks`, `databricks_mws_workspaces` and
+  `databricks_mws_vpc_endpoint` in provider 1.134, even though the account-level
+  provider block also carries it. For the VPC endpoint the schema does not mark it
+  required, so `terraform validate` passes and the apply fails with the misleading
+  `Unable to load OAuth Config`.
 - Terraform does not store null outputs in state, so while the bootstrap network is
   off its network outputs are absent rather than null. They are read through
   `try()` in `main.tf` for that reason.
