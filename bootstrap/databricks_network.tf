@@ -22,20 +22,21 @@
 #     Hive metastore; this platform governs data through Unity Catalog, so opening
 #     it would be an unused hole.
 #
+#   - Back-end PrivateLink carries every conversation with the Databricks control
+#     plane: one interface endpoint for the workspace REST API, one for the secure
+#     cluster connectivity relay. This is what makes the no-egress design work at
+#     all, and it requires the Databricks Enterprise tier.
+#
 # Cost. Everything in this file is gated behind var.enable_databricks_network,
 # which defaults to false, so none of it exists until someone deliberately turns it
-# on. When enabled, the two interface endpoints are the running cost at roughly USD
-# 7.30 each per month. The VPC, subnets, route tables and security groups are free.
-# The S3 gateway endpoint is free. There is no hourly NAT charge because there is
-# no NAT.
+# on. When enabled, the running cost is the four interface endpoints (STS, Kinesis,
+# workspace, relay). Interface endpoints bill per endpoint per availability zone
+# per hour, so four endpoints across two zones is eight billed attachments, roughly
+# USD 64 a month in eu-central-1. An earlier version of this comment priced them per
+# endpoint only, which understated the cost by half. The VPC, subnets, route
+# tables, security groups and S3 gateway endpoint are free. There is no NAT.
 #
-# What is NOT here yet, and why. Back-end PrivateLink needs two more interface
-# endpoints, pointing at the Databricks workspace API and the secure cluster
-# connectivity relay. Their VPC endpoint service names are specific to the
-# Databricks account and region, and they must be registered in the Databricks
-# account console before a workspace can use them. Until that exists, this VPC is
-# private-ready but not yet connected: a workspace launched against it could not
-# reach the control plane. See docs/architecture/databricks-network.md.
+# See docs/architecture/databricks-network.md.
 
 # Gated like everything else in this file, and for a reason worth recording: a
 # data source is read during plan whether or not anything references it, so an
@@ -301,6 +302,21 @@ resource "aws_vpc_security_group_egress_rule" "databricks_workspace_control_plan
   description       = "Control plane API and Unity Catalog lineage via back-end PrivateLink"
 }
 
+# The relay endpoint listens on 6666 for secure cluster connectivity. Databricks'
+# PrivateLink guide requires the endpoint security group to admit 443 and 6666 from
+# the compute plane; 2443 is only needed with the compliance security profile,
+# which this workspace does not enable.
+resource "aws_vpc_security_group_ingress_rule" "databricks_endpoint_scc_relay" {
+  count = local.databricks_network_count
+
+  security_group_id            = aws_security_group.databricks_endpoint[0].id
+  referenced_security_group_id = aws_security_group.databricks_workspace[0].id
+  ip_protocol                  = "tcp"
+  from_port                    = 6666
+  to_port                      = 6666
+  description                  = "Secure cluster connectivity relay from the compute plane"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "databricks_endpoint_https" {
   count = local.databricks_network_count
 
@@ -364,6 +380,42 @@ resource "aws_vpc_endpoint" "kinesis_streams" {
 
   tags = {
     Name = "${local.databricks_vpc_name}-kinesis-streams"
+  }
+}
+
+# Back-end PrivateLink. These two endpoints point at services Databricks runs in
+# its own AWS account. Private DNS makes the workspace and relay hostnames resolve
+# to these endpoints' private addresses from inside the VPC, so cluster nodes reach
+# the control plane without any route to the internet. They must also be
+# registered with the Databricks account before a workspace can use them; that
+# happens in the databricks/ stack.
+resource "aws_vpc_endpoint" "databricks_workspace" {
+  count = local.databricks_network_count
+
+  vpc_id              = aws_vpc.databricks[0].id
+  service_name        = var.databricks_workspace_vpce_service
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.databricks_endpoint[*].id
+  security_group_ids  = [aws_security_group.databricks_endpoint[0].id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${local.databricks_vpc_name}-databricks-workspace"
+  }
+}
+
+resource "aws_vpc_endpoint" "databricks_relay" {
+  count = local.databricks_network_count
+
+  vpc_id              = aws_vpc.databricks[0].id
+  service_name        = var.databricks_relay_vpce_service
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.databricks_endpoint[*].id
+  security_group_ids  = [aws_security_group.databricks_endpoint[0].id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${local.databricks_vpc_name}-databricks-relay"
   }
 }
 

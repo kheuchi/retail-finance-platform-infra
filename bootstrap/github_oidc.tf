@@ -60,9 +60,12 @@ data "aws_iam_policy_document" "github_plan_state_lock" {
       "s3:GetObject",
       "s3:ListBucket"
     ]
+    # One state file per stack. The databricks/ stack reads bootstrap outputs
+    # through terraform_remote_state, so a plan of either stack needs both.
     resources = [
       aws_s3_bucket.terraform_state.arn,
-      "${aws_s3_bucket.terraform_state.arn}/bootstrap/terraform.tfstate"
+      "${aws_s3_bucket.terraform_state.arn}/bootstrap/terraform.tfstate",
+      "${aws_s3_bucket.terraform_state.arn}/databricks/terraform.tfstate"
     ]
   }
 
@@ -74,7 +77,10 @@ data "aws_iam_policy_document" "github_plan_state_lock" {
       "s3:GetObject",
       "s3:PutObject"
     ]
-    resources = ["${aws_s3_bucket.terraform_state.arn}/bootstrap/terraform.tfstate.tflock"]
+    resources = [
+      "${aws_s3_bucket.terraform_state.arn}/bootstrap/terraform.tfstate.tflock",
+      "${aws_s3_bucket.terraform_state.arn}/databricks/terraform.tfstate.tflock"
+    ]
   }
 }
 
@@ -387,6 +393,36 @@ data "aws_iam_policy_document" "github_deploy" {
     ]
     resources = [
       "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-github-*"
+    ]
+  }
+
+  # The databricks/ stack creates two roles: the cross-account role Databricks
+  # assumes to launch cluster nodes, and the role Unity Catalog assumes to reach
+  # governed storage. The prefix scopes this to those roles and nothing else in IAM.
+  # Inline policies only, so no iam:CreatePolicy is granted. No iam:PassRole either:
+  # Databricks assumes these roles from its own account; nothing here passes them.
+  statement {
+    sid    = "ManageDatabricksRoles"
+    effect = "Allow"
+    actions = [
+      "iam:CreateRole",
+      "iam:DeleteRole",
+      "iam:DeleteRolePolicy",
+      "iam:GetRole",
+      "iam:GetRolePolicy",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListInstanceProfilesForRole",
+      "iam:ListRolePolicies",
+      "iam:ListRoleTags",
+      "iam:PutRolePolicy",
+      "iam:TagRole",
+      "iam:UntagRole",
+      "iam:UpdateAssumeRolePolicy",
+      "iam:UpdateRole",
+      "iam:UpdateRoleDescription"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${var.project_name}-dbx-*"
     ]
   }
 

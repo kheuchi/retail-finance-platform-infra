@@ -53,6 +53,7 @@ jobs:
         working-directory: bootstrap
         env:
           TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_budget_alert_email }}
+          TF_VAR_databricks_account_id: ${{ vars.DATABRICKS_ACCOUNT_ID }}
         run: terraform plan -input=false -lock-timeout=5m -out=bootstrap.tfplan
       - name: Apply exact saved plan
         working-directory: bootstrap

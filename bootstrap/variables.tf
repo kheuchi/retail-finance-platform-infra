@@ -132,3 +132,41 @@ variable "databricks_vpc_cidr" {
     error_message = "databricks_vpc_cidr must be a valid CIDR with a prefix length between /16 and /25, which is the range Databricks supports for a customer-managed VPC."
   }
 }
+
+variable "databricks_account_id" {
+  description = <<-EOT
+  Databricks account ID, a UUID from the account console. Databricks' own AWS
+  account presents it as a principal tag when it touches the workspace root bucket,
+  and the bucket policy only honours requests carrying this exact tag. Kept out of
+  Git by convention: supply it through the untracked tfvars file locally, and the
+  DATABRICKS_ACCOUNT_ID Actions variable in CI.
+  EOT
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.databricks_account_id == null || can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.databricks_account_id))
+    error_message = "databricks_account_id must be the Databricks account UUID from the account console, or be omitted."
+  }
+
+  validation {
+    condition     = !var.enable_databricks_network || var.databricks_account_id != null
+    error_message = "enable_databricks_network needs databricks_account_id: without it the root bucket grant cannot be restricted to this Databricks account."
+  }
+}
+
+# The VPC endpoint service names Databricks publishes per region for back-end
+# PrivateLink. Defaults are the eu-central-1 values from the Databricks table of
+# PrivateLink VPC endpoint services, retrieved on 2026-09-24. They are services
+# Databricks runs; we only create endpoints pointing at them.
+variable "databricks_workspace_vpce_service" {
+  description = "Databricks PrivateLink service for the workspace REST API (\"General Access\" in the Databricks table)."
+  type        = string
+  default     = "com.amazonaws.vpce.eu-central-1.vpce-svc-081f78503812597f7"
+}
+
+variable "databricks_relay_vpce_service" {
+  description = "Databricks PrivateLink service for the secure cluster connectivity relay."
+  type        = string
+  default     = "com.amazonaws.vpce.eu-central-1.vpce-svc-08e5dfca9572c85c4"
+}

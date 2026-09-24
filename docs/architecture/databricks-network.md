@@ -8,7 +8,7 @@ did not write is a network you cannot evidence.
 
 The design has **no internet gateway and no NAT gateway**. There is no route out of
 this VPC to the public internet. Everything Databricks needs from AWS arrives
-through VPC endpoints instead. That is both cheaper and stricter than the default.
+through VPC endpoints instead. That is stricter than the default, and more expensive: see the cost section.
 
 None of it exists yet. Every resource is gated behind `enable_databricks_network`,
 which defaults to `false`, so the code is reviewed and merged without anything
@@ -45,8 +45,10 @@ about when a finance process moves to the cloud.
 | Internet gateway | **none** | — |
 | NAT gateway | **none** | — |
 | S3 access | gateway endpoint | **free** |
-| STS access | interface endpoint | ~USD 7.30/month |
-| Kinesis access | interface endpoint | ~USD 7.30/month |
+| STS access | interface endpoint, 2 AZs | ~USD 16/month |
+| Kinesis access | interface endpoint, 2 AZs | ~USD 16/month |
+| Databricks workspace API | back-end PrivateLink endpoint, 2 AZs | ~USD 16/month |
+| Databricks SCC relay | back-end PrivateLink endpoint, 2 AZs | ~USD 16/month |
 | Flow logs | all traffic, to the CloudTrail bucket | pennies at this volume |
 
 Subnet sizing follows the Databricks requirement that each workspace subnet carry a
@@ -61,15 +63,16 @@ The Databricks documentation offers two shapes for a customer-managed VPC. The
 standard one routes outbound traffic through an internet gateway and a NAT gateway.
 The fully-private one removes both and relies on VPC endpoints.
 
-We take the second, for three reasons in this order:
+We take the second, for two reasons:
 
 1. **It is the stronger control.** No public egress path exists, so exfiltration
    through one is not a risk to be monitored; it is a capability that was never
    created.
 2. **It matches an existing project decision.** Control `NET-2` already says no NAT
    gateway, because it bills hourly whether or not anything uses it.
-3. **It is cheaper.** A NAT gateway is roughly USD 32 a month before data
-   processing charges. Two interface endpoints are roughly USD 15.
+
+It is **not** cheaper: see the cost section below. An earlier draft claimed it was,
+and that claim was wrong.
 
 This was learned the expensive way. An Azure Databricks workspace created on
 2026-09-21 deployed a NAT gateway automatically, because the Azure trial tier
@@ -106,21 +109,37 @@ Two deliberate omissions:
   Emptying it means anything that lands there by accident is isolated rather than
   quietly permitted.
 
-## What is not built yet
+## Back-end PrivateLink
 
-**Back-end PrivateLink.** Two further interface endpoints are needed, pointing at
-the Databricks workspace API and the secure cluster connectivity relay. Their VPC
-endpoint service names depend on the Databricks account and region, and they must
-be registered in the Databricks account console before a workspace can use them.
+Two further interface endpoints point at services Databricks runs in its own AWS
+account (`414351767826`): one for the workspace REST API, one for the secure
+cluster connectivity relay. With private DNS enabled, the hostnames
+`frankfurt.privatelink.cloud.databricks.com` and
+`tunnel.privatelink.eu-central-1.cloud.databricks.com` resolve to private addresses
+inside the VPC, so cluster nodes reach the control plane without any route to the
+internet. Both services were confirmed reachable from this account on 2026-09-24,
+owned by the Databricks AWS account, available in all three Frankfurt zones, and
+auto-accepting connections.
 
-This matters for sequencing: **until those exist, the VPC is private-ready but not
-connected.** A workspace launched against it could not reach the control plane,
-because there is no NAT and no PrivateLink, which is to say no path at all. They
-add roughly USD 15 a month, taking the network to about USD 29.
+Back-end PrivateLink **requires the Databricks Enterprise tier**. The account was
+upgraded from Premium on 2026-09-24 for this reason; the trial credit carried over.
 
-They are deliberately not written yet, for the same reason the Databricks IAM roles
-are not: an endpoint service name that does not exist cannot be applied and cannot
-be tested, and untested infrastructure is a guess in a policy document's clothing.
+Front-end PrivateLink, for users reaching the web interface privately, is not built.
+Users reach the UI over the internet, authenticated by Databricks. That is a
+deliberate scope line: it would need a client VPN or Direct Connect to be useful.
+
+## Cost, corrected twice
+
+An earlier version of this page put the network at USD 15, then USD 29 per month.
+Both were wrong. Interface endpoints bill **per endpoint, per availability zone,
+per hour**, and the first estimate also omitted the two PrivateLink endpoints. The
+correct figure is four interface endpoints across two zones, eight billed
+attachments at about USD 0.011 an hour each: **roughly USD 64 per month**.
+
+For comparison, a NAT gateway design is about USD 38 per month. The fully-private
+design is **not** the cheaper one. It was chosen because it is the only design in
+which "no public egress path exists" is literally true, which is the property a
+finance function holding price-sensitive figures would ask for.
 
 **Customer-managed KMS keys** for the workspace root and for EBS volumes on cluster
 nodes. Recorded as `DAT-9` in the control matrix, deferred on cost.
@@ -157,4 +176,4 @@ They are `null` until the flag is turned on.
 Set the flag back to `false` and apply. The interface endpoints are the only
 recurring charge and they disappear with it. The VPC, subnets and security groups
 cost nothing, so there is no urgency to remove them, but leaving the flag on with
-no workspace attached means paying roughly USD 15 a month for nothing.
+no workspace attached means paying roughly USD 64 a month for nothing.
