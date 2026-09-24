@@ -39,6 +39,10 @@ integration, is deferred rather than rejected and is the next planned increment.
 | CKV_AWS_338 | Audit log group | Rejected: S3 is the system of record |
 | CKV_AWS_26 | Security alerts topic | Accepted risk, cost-driven |
 | CKV2_AWS_5 | Databricks workspace security group | Not applicable |
+| CKV2_AWS_5 | Databricks endpoint security group | False positive, verified in AWS |
+| CKV2_AWS_11 | Databricks VPC | False positive, verified in AWS |
+| CKV2_AWS_12 | Databricks VPC | False positive, verified in AWS |
+| CKV_AWS_24 / 25 / 260 | Intra-cluster ingress rules | False positive |
 
 ## Fixed
 
@@ -194,6 +198,33 @@ Residual risk: none. An unattached security group grants nothing.
 
 Revisit when: Terraform ever creates the compute itself, which would mean we had
 stopped using Databricks-managed clusters.
+
+### A scanner that was partly blind, and the false positives it then raised
+
+Until 2026-09-24 every Databricks network resource sat behind a `count` that
+evaluated to zero, and Checkov evaluated them as absent. The earlier clean result
+of "205 passed, 0 failed" therefore said nothing about the network. When the flag
+was turned on, nine findings appeared, and the branch protection correctly blocked
+the merge. All nine are false positives, and they fall into two groups.
+
+**Graph checks that do not follow `[0]` indexes.** `CKV2_AWS_11` (flow logs),
+`CKV2_AWS_12` (default security group) and `CKV2_AWS_5` on the endpoint security
+group are relationship checks. The flow log, the emptied default security group and
+the endpoint attachments all exist in the code, but reference their targets through
+`count` indexes that Checkov's graph does not resolve. Each is verified directly in
+AWS after apply rather than accepted on the reasoning alone.
+
+**Self-referencing rules read as open.** `CKV_AWS_24`, `CKV_AWS_25` and
+`CKV_AWS_260` flag SSH, RDP and HTTP open to `0.0.0.0/0` on the two intra-cluster
+rules. Those rules take their source from the security group itself, which
+Databricks requires so cluster nodes can talk to each other. Nothing outside that
+group can use them.
+
+Residual risk: none from the findings themselves. The lesson is the general one:
+a scan of code that creates nothing is not a scan of what will be created.
+
+Revisit when: Checkov resolves count-indexed references, or the network is
+refactored away from `count`.
 
 ## Rejected
 
