@@ -34,6 +34,12 @@ jobs:
       - name: Validate Terraform
         working-directory: bootstrap
         run: terraform validate
+      - name: Initialize databricks stack without remote backend
+        working-directory: databricks
+        run: terraform init -backend=false -input=false
+      - name: Validate databricks stack
+        working-directory: databricks
+        run: terraform validate
       - name: Validate shell syntax
         run: bash -n scripts/*.sh
 
@@ -54,7 +60,7 @@ jobs:
       - name: Install pinned Checkov
         run: python -m pip install --disable-pip-version-check --requirement requirements-ci.txt
       - name: Scan Terraform
-        run: checkov --directory bootstrap --framework terraform --compact --quiet
+        run: checkov --directory bootstrap --directory databricks --framework terraform --compact --quiet
 
   cloud-plan:
     name: AWS Terraform plan
@@ -94,6 +100,20 @@ jobs:
         env:
           TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_budget_alert_email }}
           TF_VAR_databricks_account_id: ${{ vars.DATABRICKS_ACCOUNT_ID }}
+        run: terraform plan -input=false -lock-timeout=5m -no-color
+      - name: Initialize databricks stack backend
+        working-directory: databricks
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          terraform init -input=false             -backend-config="bucket=retail-finance-platform-tfstate-${account_id}-eu-central-1"             -backend-config="key=databricks/terraform.tfstate"             -backend-config="region=eu-central-1"             -backend-config="use_lockfile=true"             -backend-config="encrypt=true"
+      - name: Plan databricks stack
+        working-directory: databricks
+        env:
+          DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          TF_VAR_databricks_account_id: ${{ vars.DATABRICKS_ACCOUNT_ID }}
+          TF_VAR_databricks_client_id: ${{ vars.DATABRICKS_CLIENT_ID }}
+          TF_VAR_workspace_admin_user: ${{ vars.DATABRICKS_WORKSPACE_ADMIN }}
         run: terraform plan -input=false -lock-timeout=5m -no-color
 
   release:
