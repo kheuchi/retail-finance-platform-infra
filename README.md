@@ -10,6 +10,9 @@ repositories listed by the control plane's `REPOSITORIES.md`.
 
 - `bootstrap/`: remote Terraform state, AWS Budget alerts, and the IAM account
   password policy.
+- `databricks/`: a second stack for the Databricks side — cross-account and Unity
+  Catalog roles, account registrations, the classic Enterprise workspace, and the
+  governed external location. Reads `bootstrap/` outputs; never the reverse.
 - `docs/architecture/`: infrastructure-specific architecture decisions, including
   the costed Frankfurt network, audit and Databricks foundation proposal.
 - `docs/security/checkov-exceptions.md`: every accepted policy-scan exception, with
@@ -22,6 +25,8 @@ repositories listed by the control plane's `REPOSITORIES.md`.
   semantic releases.
 - `.github/workflows/deploy-bootstrap.yml`: manually gated, OIDC-authenticated
   bootstrap deployment from `main`.
+- `.github/workflows/deploy-databricks.yml`: the same gate for the `databricks/`
+  stack, sharing a concurrency group so the two stacks never apply at once.
 
 The bootstrap stack is deployed in `eu-central-1` and uses a protected remote
 backend. GitHub plans and deployments use temporary OIDC role sessions; no AWS

@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars, which is gitignored. None of these are secrets, but
+# they are kept out of Git by project convention. The client secret is never set
+# here: export DATABRICKS_CLIENT_SECRET, or let the provider read ~/.databrickscfg.
+
+databricks_account_id = "00000000-0000-0000-0000-000000000000"
+databricks_client_id  = "00000000-0000-0000-0000-000000000000"
+workspace_admin_user  = "you@example.com"
