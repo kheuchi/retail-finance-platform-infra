@@ -16,9 +16,11 @@ resource "databricks_mws_storage_configurations" "this" {
   count    = local.workspace_count
   provider = databricks.account
 
-  # account_id is still a required argument on this resource, on
-  # databricks_mws_networks and on databricks_mws_workspaces in provider 1.134,
-  # even though the provider block already carries it.
+  # account_id is still needed on this resource, on databricks_mws_networks,
+  # databricks_mws_workspaces and databricks_mws_vpc_endpoint in provider 1.134,
+  # even though the provider block already carries it. For the VPC endpoint the
+  # schema does not mark it required, so validate passes and the apply fails with
+  # "Unable to load OAuth Config". Found on the first apply.
   account_id                 = var.databricks_account_id
   storage_configuration_name = "${var.project_name}-root"
   bucket_name                = local.bootstrap.databricks_root_bucket_name
@@ -30,6 +32,7 @@ resource "databricks_mws_vpc_endpoint" "workspace" {
   count    = local.workspace_count
   provider = databricks.account
 
+  account_id          = var.databricks_account_id
   vpc_endpoint_name   = "${var.project_name}-workspace-api"
   aws_vpc_endpoint_id = local.network.workspace_vpc_endpoint_id
   region              = var.aws_region
@@ -39,6 +42,7 @@ resource "databricks_mws_vpc_endpoint" "relay" {
   count    = local.workspace_count
   provider = databricks.account
 
+  account_id          = var.databricks_account_id
   vpc_endpoint_name   = "${var.project_name}-scc-relay"
   aws_vpc_endpoint_id = local.network.relay_vpc_endpoint_id
   region              = var.aws_region
