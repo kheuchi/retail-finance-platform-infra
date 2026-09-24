@@ -77,6 +77,12 @@ locals {
 resource "aws_vpc" "databricks" {
   count = local.databricks_network_count
 
+  # Accepted, reviewed exceptions. See docs/security/checkov-exceptions.md.
+  # Both are graph checks that fail to follow count-indexed references. The flow
+  # log and the emptied default security group exist and were verified in AWS.
+  #checkov:skip=CKV2_AWS_11:Flow logs are enabled by aws_flow_log.databricks, which Checkov's graph does not link through the [0] index.
+  #checkov:skip=CKV2_AWS_12:The default security group is emptied by aws_default_security_group.databricks, which Checkov's graph does not link through the [0] index.
+
   cidr_block = var.databricks_vpc_cidr
 
   # Both are mandatory for interface endpoints to resolve to their private
@@ -186,6 +192,8 @@ resource "aws_security_group" "databricks_workspace" {
 resource "aws_security_group" "databricks_endpoint" {
   count = local.databricks_network_count
 
+  #checkov:skip=CKV2_AWS_5:Attached to all four interface endpoints; Checkov's graph does not follow the [0]-indexed reference. See docs/security/checkov-exceptions.md.
+
   name        = "${local.databricks_vpc_name}-endpoint"
   description = "Interface VPC endpoints serving the Databricks compute plane."
   vpc_id      = aws_vpc.databricks[0].id
@@ -205,6 +213,12 @@ resource "aws_security_group" "databricks_endpoint" {
 resource "aws_vpc_security_group_ingress_rule" "databricks_workspace_self_tcp" {
   count = local.databricks_network_count
 
+  # The source is this security group itself, not an address range. Checkov reads
+  # an all-ports rule with no CIDR as open to 0.0.0.0/0. It is not.
+  #checkov:skip=CKV_AWS_24:Source is the security group itself, not 0.0.0.0/0.
+  #checkov:skip=CKV_AWS_25:Source is the security group itself, not 0.0.0.0/0.
+  #checkov:skip=CKV_AWS_260:Source is the security group itself, not 0.0.0.0/0.
+
   security_group_id            = aws_security_group.databricks_workspace[0].id
   referenced_security_group_id = aws_security_group.databricks_workspace[0].id
   ip_protocol                  = "tcp"
@@ -215,6 +229,12 @@ resource "aws_vpc_security_group_ingress_rule" "databricks_workspace_self_tcp" {
 
 resource "aws_vpc_security_group_ingress_rule" "databricks_workspace_self_udp" {
   count = local.databricks_network_count
+
+  # The source is this security group itself, not an address range. Checkov reads
+  # an all-ports rule with no CIDR as open to 0.0.0.0/0. It is not.
+  #checkov:skip=CKV_AWS_24:Source is the security group itself, not 0.0.0.0/0.
+  #checkov:skip=CKV_AWS_25:Source is the security group itself, not 0.0.0.0/0.
+  #checkov:skip=CKV_AWS_260:Source is the security group itself, not 0.0.0.0/0.
 
   security_group_id            = aws_security_group.databricks_workspace[0].id
   referenced_security_group_id = aws_security_group.databricks_workspace[0].id
