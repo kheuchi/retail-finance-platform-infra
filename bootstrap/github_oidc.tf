@@ -128,7 +128,8 @@ data "aws_iam_policy_document" "github_deploy" {
   #   - the IAM account password policy, an account-level setting with no ARN;
   #   - ec2:Describe* calls, which AWS does not support resource-level permissions for;
   #   - EC2 network creation, where the resource does not exist until the call
-  #     succeeds. That statement is instead constrained by a RequestTag condition.
+  #     succeeds. That statement is instead constrained by a RequestTag condition;
+  #   - CloudWatch Logs log deliveries used by flow logs, which have no resource type.
   # Every other statement in this document names its exact resources.
   #checkov:skip=CKV_AWS_356:Residual "*" is the account password policy and EC2 network actions, neither of which AWS exposes as a scopable resource.
   #checkov:skip=CKV_AWS_111:Same statements. iam:UpdateAccountPasswordPolicy and ec2:Describe* cannot be resource-constrained.
@@ -401,6 +402,60 @@ data "aws_iam_policy_document" "github_deploy" {
   # governed storage. The prefix scopes this to those roles and nothing else in IAM.
   # Inline policies only, so no iam:CreatePolicy is granted. No iam:PassRole either:
   # Databricks assumes these roles from its own account; nothing here passes them.
+  # Security group rules are resources in their own right. Authorising a rule
+  # touches two ARNs: the security group, covered above by its ResourceTag, and
+  # the new security-group-rule, which has no tags yet because it does not exist
+  # until the call succeeds. This statement covers only the rule ARN, and only
+  # when the request tags it as this project's, so it grants nothing on any
+  # security group. Found with the IAM policy simulator before activation rather
+  # than by a failed apply.
+  statement {
+    sid    = "CreateDatabricksSecurityGroupRules"
+    effect = "Allow"
+    actions = [
+      "ec2:AuthorizeSecurityGroupEgress",
+      "ec2:AuthorizeSecurityGroupIngress"
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:security-group-rule/*"
+    ]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Application"
+      values   = [var.project_name]
+    }
+  }
+
+  # Publishing VPC flow logs to S3 goes through CloudWatch Logs' log-delivery
+  # service, which requires the caller to hold these even though no log group is
+  # involved. Log deliveries have no resource type, so "*" is the only form AWS
+  # accepts.
+  statement {
+    sid    = "DeliverFlowLogsToS3"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogDelivery",
+      "logs:DeleteLogDelivery",
+      "logs:GetLogDelivery",
+      "logs:ListLogDeliveries"
+    ]
+    resources = ["*"]
+  }
+
+  # An interface endpoint with private DNS attaches the VPC to a private hosted
+  # zone AWS manages for the service. The zone is not ours and its ID is not known
+  # in advance, hence the wildcard on hosted zones only.
+  statement {
+    sid    = "AssociateEndpointPrivateDns"
+    effect = "Allow"
+    actions = [
+      "route53:AssociateVPCWithHostedZone",
+      "route53:DisassociateVPCFromHostedZone"
+    ]
+    resources = ["arn:${data.aws_partition.current.partition}:route53:::hostedzone/*"]
+  }
+
   statement {
     sid    = "ManageDatabricksRoles"
     effect = "Allow"
@@ -495,6 +550,7 @@ data "aws_iam_policy_document" "github_deploy" {
       "ec2:DescribeSubnets",
       "ec2:DescribeTags",
       "ec2:DescribeVpcAttribute",
+      "ec2:DescribeVpcEndpointServices",
       "ec2:DescribeVpcEndpoints",
       "ec2:DescribeVpcs"
     ]
