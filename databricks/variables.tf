@@ -69,9 +69,12 @@ variable "enable_unity_catalog" {
   Creates the Unity Catalog storage credential, its IAM role and the external
   location on the governed bucket. Needs the workspace URL, so it is turned on
   in an apply after the one that creates the workspace.
+
+  Enabled on 2026-09-24, once the workspace was running and confirmed attached
+  to metastore_aws_eu_central_1.
   EOT
   type        = bool
-  default     = false
+  default     = true
 
   validation {
     condition     = !var.enable_unity_catalog || var.enable_workspace
