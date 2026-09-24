@@ -62,7 +62,16 @@ was a genuine over-grant and is closed.
 
 ## Accepted
 
-### CKV_AWS_356 / CKV_AWS_111 — residual `"*"` on the account password policy
+### CKV_AWS_356 / CKV_AWS_111 — residual `"*"` on the deploy role
+
+Three statements on the deploy role still use `"*"`, each because AWS offers no
+narrower form: the account password policy, which has no ARN; `ec2:Describe*`,
+which does not support resource-level permissions; and the CloudWatch Logs
+log-delivery actions that VPC flow logs to S3 depend on, which have no resource
+type. EC2 creation is also `"*"` on resource but constrained by a `RequestTag`
+condition. The subsections below record the original password-policy case.
+
+#### Residual `"*"` on the account password policy
 
 `iam:GetAccountPasswordPolicy` and `iam:UpdateAccountPasswordPolicy` act on an
 account-wide setting that has no ARN. AWS does not accept a resource-qualified
