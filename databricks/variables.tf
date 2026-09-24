@@ -57,9 +57,11 @@ variable "enable_workspace" {
   registrations, and the classic workspace. Requires the bootstrap network to be
   enabled first. Creating a workspace is free; what costs money is compute
   started inside it and the network endpoints bootstrap already runs.
+
+  Enabled on 2026-09-24, after the bootstrap network was applied.
   EOT
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_unity_catalog" {
