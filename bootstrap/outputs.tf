@@ -41,3 +41,28 @@ output "databricks_workspace_security_group_id" {
   description = "Security group applied to Databricks compute plane nodes."
   value       = try(aws_security_group.databricks_workspace[0].id, null)
 }
+
+output "databricks_workspace_vpc_endpoint_id" {
+  description = "AWS ID of the back-end PrivateLink endpoint for the workspace REST API. Registered with Databricks by the databricks/ stack."
+  value       = try(aws_vpc_endpoint.databricks_workspace[0].id, null)
+}
+
+output "databricks_relay_vpc_endpoint_id" {
+  description = "AWS ID of the back-end PrivateLink endpoint for the secure cluster connectivity relay."
+  value       = try(aws_vpc_endpoint.databricks_relay[0].id, null)
+}
+
+output "databricks_root_bucket_name" {
+  description = "Workspace root storage bucket."
+  value       = aws_s3_bucket.databricks_root.id
+}
+
+output "unity_catalog_bucket_name" {
+  description = "Bucket that Unity Catalog governs through an external location."
+  value       = aws_s3_bucket.unity_catalog.id
+}
+
+output "aws_region" {
+  description = "Region every regional resource in this project lives in."
+  value       = var.aws_region
+}

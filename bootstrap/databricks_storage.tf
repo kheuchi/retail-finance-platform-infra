@@ -12,12 +12,9 @@
 # because they sit on the critical path: the workspace cannot be created without
 # root storage, and the metastore cannot be created without its own location.
 #
-# What is deliberately NOT here: the Databricks cross-account IAM role, the Unity
-# Catalog storage credential role, and the bucket policies granting Databricks
-# access. Every one of those requires the Databricks account ID as an external ID
-# or policy condition, and that identifier does not exist until the account is
-# created. Writing them now would mean writing IAM that cannot be applied or tested.
-# See docs/architecture/databricks-prerequisites.md for what remains and why.
+# The Databricks cross-account role and the Unity Catalog role live in the
+# databricks/ stack, beside the Databricks objects that reference them. Only the
+# bucket policies stay here, because each bucket must have a single policy owner.
 
 resource "aws_s3_bucket" "databricks_root" {
   bucket        = local.databricks_root_bucket_name
@@ -120,6 +117,47 @@ resource "aws_s3_bucket_lifecycle_configuration" "databricks" {
 data "aws_iam_policy_document" "databricks_tls_only" {
   for_each = local.databricks_buckets
 
+  # Workspace root storage is written by Databricks' own AWS account, not by a role
+  # in ours, so it needs a cross-account grant. This is the statement the Databricks
+  # provider's databricks_aws_bucket_policy data source generates, written out here
+  # so the bucket keeps a single policy owner. The condition matters: Databricks'
+  # account serves every Databricks customer, and only requests tagged with our
+  # Databricks account ID are honoured. Present only on the root bucket, and only
+  # once the network is enabled. The Unity Catalog bucket needs no bucket-policy
+  # grant, because it is reached through an IAM role in this account.
+  dynamic "statement" {
+    for_each = each.key == "databricks_root" && var.enable_databricks_network ? [1] : []
+
+    content {
+      sid    = "GrantDatabricksWorkspaceRootAccess"
+      effect = "Allow"
+
+      principals {
+        type        = "AWS"
+        identifiers = ["arn:${data.aws_partition.current.partition}:iam::414351767826:root"]
+      }
+
+      actions = [
+        "s3:DeleteObject",
+        "s3:GetBucketLocation",
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:ListBucket",
+        "s3:PutObject"
+      ]
+      resources = [
+        "arn:${data.aws_partition.current.partition}:s3:::${each.value}",
+        "arn:${data.aws_partition.current.partition}:s3:::${each.value}/*"
+      ]
+
+      condition {
+        test     = "StringEquals"
+        variable = "aws:PrincipalTag/DatabricksAccountId"
+        values   = [var.databricks_account_id]
+      }
+    }
+  }
+
   statement {
     sid    = "DenyInsecureTransport"
     effect = "Deny"
@@ -143,8 +181,8 @@ data "aws_iam_policy_document" "databricks_tls_only" {
   }
 }
 
-# Only the TLS-only guard for now. The statements granting Databricks itself access
-# are added when the account ID exists, since they are conditioned on it.
+# The TLS-only guard on both buckets, plus the Databricks root grant above once the
+# network is enabled.
 resource "aws_s3_bucket_policy" "databricks" {
   for_each = local.databricks_buckets
 
