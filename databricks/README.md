@@ -1,5 +1,7 @@
 # databricks/
 
+**Contents:** [Security in one line each](#security-in-one-line-each) · [Gotchas (provider 1.134)](#gotchas-provider-1134)
+
 The Databricks side, as a separate stack: if something breaks here, the state
 bucket, audit trail and CI roles are out of reach.
 
@@ -13,12 +15,16 @@ workspace URL). Enabling too early fails with a clear message.
 
 ## Security in one line each
 
+> Detail: [`../cmdb.yml`](../cmdb.yml) → `stacks.databricks, iam`
+
 - Databricks can only use our roles on behalf of **our** account (external IDs,
   principal tag), which blocks the "confused deputy" problem.
 - The cross-account role can only launch instances in **our** VPC and security group.
 - Auth is a service principal with a 14-day secret; target is OIDC with no secret.
 
 ## Gotchas (provider 1.134)
+
+> Detail: [`../cmdb.yml`](../cmdb.yml) → `incidents`
 
 - `account_id` must be set on several `databricks_mws_*` resources even though the
   provider has it. For VPC endpoints, validate passes and apply fails.

@@ -1,5 +1,7 @@
 # bootstrap/
 
+**Contents:** [Run](#run)
+
 The AWS foundation. Everything else builds on it.
 
 | Area | What |
@@ -14,6 +16,8 @@ The AWS foundation. Everything else builds on it.
 The Databricks network sits behind `enable_databricks_network` (on until 2026-10-06).
 
 ## Run
+
+> Detail: [`../cmdb.yml`](../cmdb.yml) → `stacks.bootstrap, iam.deploy_role`
 
 Normally: open a PR, merge, then **Actions → Deploy AWS Bootstrap → `apply`**.
 

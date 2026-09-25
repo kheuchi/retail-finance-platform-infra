@@ -1,5 +1,7 @@
 # Architecture
 
+**Contents:** [Key choices](#key-choices) · [Where the data lives](#where-the-data-lives) · [What it costs](#what-it-costs) · [Not built](#not-built)
+
 ```text
  GitHub Actions ──OIDC──►  AWS account (eu-central-1)
                            ├─ bootstrap: state · budget · CloudTrail · alarms
@@ -13,6 +15,8 @@
 
 ## Key choices
 
+> Detail: [`../cmdb.yml`](../cmdb.yml) → `stacks.bootstrap.databricks_network`
+
 | Choice | Why |
 |---|---|
 | One AWS account, not many | Organizations would forfeit the credit; the multi-account design is documented instead |
@@ -23,11 +27,15 @@
 
 ## Where the data lives
 
+> Detail: [`../cmdb.yml`](../cmdb.yml) → `stacks.databricks`
+
 Our clusters (EC2 in our VPC) read and write our S3 buckets. Only commands and small
 results cross to Databricks' control plane, and only through PrivateLink.
 Finance tables never leave the account.
 
 ## What it costs
+
+> Detail: [`../cmdb.yml`](../cmdb.yml) → `costs_usd_month`
 
 | Item | USD/month |
 |---|---|

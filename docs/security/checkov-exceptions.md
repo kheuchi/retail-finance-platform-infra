@@ -1,5 +1,7 @@
 # Checkov Exceptions
 
+**Contents:** [Blind spots](#blind-spots)
+
 Checkov scans the Terraform on every PR, and a failure blocks the merge. Every
 `#checkov:skip` in the code has a line here. Longer reasons: `cmdb.yml` → `checkov`.
 
@@ -19,6 +21,8 @@ Checkov scans the Terraform on every PR, and a failure blocks the merge. Every
 | CKV_AWS_24, 25, 260 | Intra-cluster rules | False positive: source is the SG itself, not the internet |
 
 ## Blind spots
+
+> Detail: [`../../cmdb.yml`](../../cmdb.yml) → `checkov.blind_spots`
 
 - Resources behind `count = 0` are invisible. A clean scan of switched-off code
   proves nothing.

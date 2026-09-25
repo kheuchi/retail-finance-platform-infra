@@ -1,10 +1,14 @@
 # Retail Finance Platform: Infrastructure
 
+**Contents:** [What's deployed (eu-central-1)](#whats-deployed-eu-central-1) · [Layout](#layout) · [Rules](#rules)
+
 Terraform for the AWS and Databricks side of the
 [retail finance platform](https://github.com/kheuchi/retail-finance-platform-control-plane):
 a private Databricks lakehouse for a large retailer's accounting department.
 
 ## What's deployed (eu-central-1)
+
+> Detail: [`cmdb.yml`](cmdb.yml) → `stacks`
 
 - **Foundation:** state bucket, USD 50 budget, CI roles via GitHub OIDC, CloudTrail,
   alarms on break-glass and root use.
@@ -26,6 +30,8 @@ Running cost: ~USD 2/day while the network is on. Teardown due **2026-10-06**.
 | `cmdb.yml` | Full detail: resources, IAM, costs, incidents |
 
 ## Rules
+
+> Detail: [`cmdb.yml`](cmdb.yml) → `ci_cd`
 
 - Every change goes through a pull request; `main` is protected, admins included.
 - Deploys run from GitHub Actions with short-lived OIDC credentials. No stored keys.

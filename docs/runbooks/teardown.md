@@ -1,11 +1,15 @@
 # Runbook: Teardown
 
+**Contents:** [Steps](#steps) · [Check it worked](#check-it-worked) · [What stays (~USD 1/month)](#what-stays-usd-1month)
+
 **When:** by 2026-10-06, when the Databricks trial ends. Stops ~USD 2/day of network
 cost and avoids pay-as-you-go DBU charges.
 
 Order matters: Unity Catalog → workspace → network. Each step is one PR plus one deploy.
 
 ## Steps
+
+> Detail: [`../../cmdb.yml`](../../cmdb.yml) → `stacks.bootstrap.flags, stacks.databricks.flags`
 
 1. **Unity Catalog off.** In `databricks/variables.tf` set `enable_unity_catalog = false`.
    PR, merge, **Deploy Databricks Workspace**. (Must run while the workspace still exists.)
@@ -26,6 +30,8 @@ aws ec2 describe-vpc-endpoints --region eu-central-1 --query 'length(VpcEndpoint
 Then Cost Explorer a day later: no VPC endpoint charges.
 
 ## What stays (~USD 1/month)
+
+> Detail: [`../../cmdb.yml`](../../cmdb.yml) → `costs_usd_month`
 
 State bucket, budget, CloudTrail, alarms, the two data buckets (empty or near-empty).
 Everything can be rebuilt by flipping the flags back.
