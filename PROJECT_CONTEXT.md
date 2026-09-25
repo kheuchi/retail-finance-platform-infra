@@ -35,10 +35,11 @@ Not application code, data pipelines, models or agent logic.
 | bootstrap | `enable_databricks_network = true` | Applied, verified in AWS |
 | databricks | `enable_workspace = true` | Workspace RUNNING |
 | databricks | `enable_unity_catalog = true` | Storage validated R/W/L/D |
+| databricks | `enable_guardrails = true` | Policy, serverless egress, budget verified via API |
 
 ## Next
 
-1. Cluster policies: auto-termination and size limits, before any cluster runs.
+1. ~~Cluster guardrails~~ done 2026-09-25: policy, serverless egress, budget alerts.
 2. Alarms on audit-trail tampering and IAM changes (finding F-3).
 3. Replace the Databricks secret with GitHub OIDC federation (secret expires ~2026-10-08).
 4. **Teardown on 2026-10-06:** see `docs/runbooks/teardown.md`.
