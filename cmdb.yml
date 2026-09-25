@@ -234,6 +234,14 @@ incidents:
     what: "VPC endpoint registration failed (\"Unable to load OAuth Config\")"
     cause: "account_id needed but not marked required"
     fix: "added account_id"
+  - date: "2026-09-25"
+    what: "serverless network policy creation failed (Invalid NetworkPolicyId)"
+    cause: "undocumented 32-character limit on network policy IDs; ours had 45"
+    fix: "found the limit with read-only GETs; ID shortened to retail-finance-serverless; precondition added"
+  - date: "2026-09-25"
+    what: "databricks_budget showed a change on every plan"
+    cause: "API normalises thresholds (100 -> 100.000000000000000000), reorders alerts, adds an empty filter"
+    fix: "ignore_changes on alert_configurations and filter; thresholds verified via API"
 
 # ──────────── toolchain ────────────
 toolchain:

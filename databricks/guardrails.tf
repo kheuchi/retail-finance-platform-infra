@@ -18,6 +18,8 @@ locals {
   # local NVMe for Spark shuffle, Graviton first because it is cheapest per core.
   allowed_node_types = ["m6gd.large", "m6gd.xlarge", "m5d.large", "m5d.xlarge"]
   allowed_runtimes   = ["17.3.x-scala2.13", "16.4.x-scala2.12"]
+
+  serverless_network_policy_id = "retail-finance-serverless"
 }
 
 # ── 1. Cluster policy ────────────────────────────────────────────────
@@ -111,7 +113,18 @@ resource "databricks_account_network_policy" "serverless_restricted" {
   count    = local.workspace_count
   provider = databricks.account
 
-  network_policy_id = "${var.project_name}-serverless-restricted"
+  # Databricks rejects IDs longer than 32 characters ("Invalid NetworkPolicyId").
+  # The limit is undocumented; it was found by probing the API with read-only GETs
+  # after the first apply failed on a 45-character ID. The precondition below turns
+  # it into a plan-time error.
+  network_policy_id = local.serverless_network_policy_id
+
+  lifecycle {
+    precondition {
+      condition     = length(local.serverless_network_policy_id) <= 32
+      error_message = "Databricks network policy IDs are limited to 32 characters."
+    }
+  }
 
   egress = {
     network_access = {
@@ -162,5 +175,14 @@ resource "databricks_budget" "trial" {
         target      = var.budget_alert_email
       }
     }
+  }
+
+  # The API normalises what it stores: thresholds come back as
+  # "300.000000000000000000", alerts come back in a different order, and an empty
+  # filter block appears. Without this every plan would show a phantom change and
+  # hide real drift. The cost: changing thresholds or the email later needs this
+  # line removed for one apply. Thresholds were checked against the API after creation.
+  lifecycle {
+    ignore_changes = [alert_configurations, filter]
   }
 }
