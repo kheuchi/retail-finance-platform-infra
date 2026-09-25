@@ -78,14 +78,16 @@ data "databricks_group" "users" {
 
 # No free-form cluster creation for ordinary users. With CAN_USE on the policy
 # below they can still create clusters, but only within its limits.
-resource "databricks_entitlements" "users" {
-  count    = local.guardrails_count
-  provider = databricks.workspace
-
-  group_id              = data.databricks_group.users[0].id
-  workspace_access      = true
-  databricks_sql_access = true
-  allow_cluster_create  = false
+#
+# This workspace does not allow Terraform to manage the users group's
+# entitlements ("not permitted for this workspace"); new workspaces lock them, and
+# the group already has none. So instead of setting it, we assert it: this check
+# warns on every plan if anyone grants the group free-form cluster creation.
+check "users_cannot_create_unrestricted_clusters" {
+  assert {
+    condition     = local.guardrails_count == 0 || !data.databricks_group.users[0].allow_cluster_create
+    error_message = "The workspace 'users' group can create clusters outside the finance-small policy."
+  }
 }
 
 resource "databricks_permissions" "finance_small_policy" {
