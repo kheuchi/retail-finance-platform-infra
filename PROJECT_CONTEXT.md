@@ -1,15 +1,21 @@
 # Infrastructure Context
 
+**Contents:** [This repo owns](#this-repo-owns) · [Operating rules](#operating-rules) · [State (2026-09-25)](#state-2026-09-25) · [Next](#next)
+
 Read first. Program-level context lives in the control-plane repo. Detail is in
 [cmdb.yml](cmdb.yml).
 
 ## This repo owns
+
+> Detail: [`cmdb.yml`](cmdb.yml) → `stacks`
 
 Terraform state, AWS identity and policies, audit and alerting, network, storage,
 Databricks workspace infrastructure, and the CI/CD that deploys them.
 Not application code, data pipelines, models or agent logic.
 
 ## Operating rules
+
+> Detail: [`cmdb.yml`](cmdb.yml) → `incidents`
 
 1. Work from WSL2. Use the named IAM user, never root.
 2. Change code by pull request. Deploy with the gated workflows, not from a laptop.
@@ -21,6 +27,8 @@ Not application code, data pipelines, models or agent logic.
 7. Record applies, destroys, exceptions and incidents in `cmdb.yml`.
 
 ## State (2026-09-25)
+
+> Detail: [`cmdb.yml`](cmdb.yml) → `stacks.bootstrap.flags, stacks.databricks.flags`
 
 | Stack | Flag | State |
 |---|---|---|

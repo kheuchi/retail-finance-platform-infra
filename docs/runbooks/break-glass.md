@@ -1,5 +1,7 @@
 # Runbook: Break-Glass
 
+**Contents:** [Steps](#steps) · [Used so far](#used-so-far) · [Known weaknesses](#known-weaknesses)
+
 Use only when the pipeline **cannot fix itself**, e.g. the deploy role lacks the very
 permission it needs to plan. If the pipeline still runs, fix it by PR instead.
 
@@ -22,6 +24,8 @@ Every use raises an alarm by email (tested). That's intended.
 5. **Record it** in `cmdb.yml` → `incidents`: what broke, why, what you applied.
 
 ## Used so far
+
+> Detail: [`../../cmdb.yml`](../../cmdb.yml) → `incidents`
 
 Twice on 2026-09-16: missing read permissions, then a CloudTrail action with no
 resource type. Both are in `cmdb.yml`.
