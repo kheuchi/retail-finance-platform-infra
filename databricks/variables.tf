@@ -81,3 +81,25 @@ variable "enable_unity_catalog" {
     error_message = "enable_unity_catalog needs enable_workspace: Unity Catalog objects are created through the workspace."
   }
 }
+
+variable "enable_guardrails" {
+  description = <<-EOT
+  Creates the finance-small cluster policy and restricts ordinary users to it.
+  Workspace-level objects, so during teardown turn this off together with
+  enable_unity_catalog, before the workspace itself.
+  EOT
+  type        = bool
+  default     = true
+
+  validation {
+    condition     = !var.enable_guardrails || var.enable_workspace
+    error_message = "enable_guardrails needs enable_workspace."
+  }
+}
+
+variable "budget_alert_email" {
+  description = "Receives Databricks budget alerts. Same Actions secret as the AWS budget (TF_VAR_budget_alert_email). Null creates the budget without alerts."
+  type        = string
+  default     = null
+  sensitive   = true
+}

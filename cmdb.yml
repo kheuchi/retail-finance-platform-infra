@@ -79,6 +79,7 @@ stacks:
     flags:
       enable_workspace: {value: true, since: "2026-09-24"}
       enable_unity_catalog: {value: true, since: "2026-09-24"}
+      enable_guardrails: {value: true, since: "2026-09-25"}
     resources:
       - aws_iam_role.crossaccount (retail-finance-platform-dbx-crossaccount; ExternalId = Databricks account ID; "restricted" policy pinned to VPC + SG)
       - databricks_mws_credentials / storage_configurations / vpc_endpoint x2 / private_access_settings / networks
@@ -87,9 +88,14 @@ stacks:
       - databricks_storage_credential.governed (isolated)
       - aws_iam_role.unity_catalog (retail-finance-platform-dbx-unity-catalog; trusts UC master role with issued external ID; self-assuming)
       - databricks_external_location.governed (s3 root of the governed bucket, isolated)
+      - "databricks_cluster_policy.finance_small: autotermination 10-30 min (default 15), 0-2 workers (default single node), m6gd/m5d large|xlarge, runtimes 17.3/16.4 LTS, spot + on-demand driver, no Photon, no instance profiles, SINGLE_USER|USER_ISOLATION, 1 cluster per user, CostCenter tag fixed"
+      - "databricks_entitlements.users: allow_cluster_create = false (clusters only via the policy); databricks_permissions: users CAN_USE policy"
+      - "databricks_account_network_policy.serverless_restricted: serverless egress RESTRICTED_ACCESS, only the governed bucket, ENFORCED; assigned via databricks_workspace_network_option (delete is a no-op, so the workspace depends on the policy)"
+      - "databricks_budget.trial: whole account, monthly, list-price USD alerts at 100/200/300/380 to the budget email"
     notes:
       - Workspace auto-attached to metastore_aws_eu_central_1 (one metastore per region).
       - "Front-end access is public (UI over internet, Databricks auth); back-end is PrivateLink only."
+      - "Workspace admins bypass cluster policies; for the owner the policy is a default, the budget alerts still apply."
     verified: "2026-09-25: workspace RUNNING/ENTERPRISE/HYBRID; UC validation READ, LIST, WRITE, DELETE all PASS"
 
 # ──────────── iam ────────────
