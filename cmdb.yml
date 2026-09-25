@@ -1,0 +1,220 @@
+# cmdb.yml: the detailed record behind the short markdown docs in this repo.
+# Edit here; keep the .md files short. No secrets or account IDs in this file.
+# Bucket names contain the AWS account ID, shown here as <account>.
+
+updated: "2026-09-25"
+region: eu-central-1
+
+stacks:
+  bootstrap:
+    purpose: AWS foundation - state, budget, CI roles, audit, alerting, Databricks storage and network
+    state_key: bootstrap/terraform.tfstate
+    deploy_workflow: deploy-bootstrap.yml
+    flags:
+      enable_databricks_network: {value: true, since: "2026-09-24", turn_off: "2026-10-06"}
+    resources:
+      state:
+        - "aws_s3_bucket.terraform_state (retail-finance-platform-tfstate-<account>-eu-central-1, prevent_destroy)"
+      cost:
+        - "aws_budgets_budget.monthly (USD 50, alerts 50%/80% actual + 100% forecast, gross cost excl. credits)"
+      identity:
+        - aws_iam_account_password_policy.baseline (14 chars, complexity, 90-day age, 24 reuse)
+        - aws_iam_openid_connect_provider.github
+        - aws_iam_role.github_plan (ReadOnlyAccess + state read/lock; trusts main branch by numeric repo ID)
+        - aws_iam_role.github_deploy (scoped policy; trusts aws-bootstrap environment by numeric repo ID)
+      audit:
+        - aws_s3_bucket.audit_logs (retail-finance-platform-cloudtrail-<account>-eu-central-1, 365-day expiry)
+        - aws_cloudtrail.management_events (multi-region, global events, log file validation, data events on state bucket)
+        - aws_flow_log.databricks (all traffic, to audit bucket /vpc-flow-logs/)
+      alerting:
+        - aws_cloudwatch_log_group.audit (90-day retention; S3 is the system of record)
+        - aws_cloudwatch_log_metric_filter.security x2 (BreakGlassAdminWrite, RootAccountUsed)
+        - aws_cloudwatch_metric_alarm.security x2
+        - aws_sns_topic.security_alerts + email subscription (confirmed)
+      databricks_storage:
+        - aws_s3_bucket.databricks_root (workspace root; Databricks grant conditioned on principal tag)
+        - aws_s3_bucket.unity_catalog (governed data; reached via IAM role, no bucket grant)
+      databricks_network:
+        vpc: 10.20.0.0/16, DNS hostnames + resolution on
+        subnets: {workspace: "2 x /22 (AZ a, b)", endpoint: "2 x /24 (AZ a, b)"}
+        internet_gateway: none
+        nat_gateway: none
+        route_table: local route only
+        endpoints:
+          s3: gateway (free)
+          sts: interface, private DNS
+          kinesis_streams: interface, private DNS
+          databricks_workspace: "interface, com.amazonaws.vpce.eu-central-1.vpce-svc-081f78503812597f7"
+          databricks_relay: "interface, com.amazonaws.vpce.eu-central-1.vpce-svc-08e5dfca9572c85c4"
+        security_groups:
+          workspace:
+            ingress: [all TCP/UDP from itself]
+            egress: [all TCP/UDP to itself, 443 to endpoint SG, 443 to S3 prefix list, 6666 to VPC CIDR, 8443-8451 to VPC CIDR]
+            omitted: [3306 (legacy Hive metastore; we use Unity Catalog), 0.0.0.0/0 anywhere]
+          endpoint: {ingress: [443 and 6666 from workspace SG]}
+          default: all rules stripped
+        verified_in_aws: "2026-09-25: 0 IGW, 0 NAT, 0 routes to 0.0.0.0/0, 0 public IPs, 0 world-open rules, flow logs ACTIVE"
+
+  databricks:
+    purpose: Databricks side - IAM roles, account registrations, classic workspace, Unity Catalog access
+    state_key: databricks/terraform.tfstate
+    deploy_workflow: deploy-databricks.yml
+    depends_on: bootstrap outputs via terraform_remote_state (one way only)
+    auth: service principal terraform-platform, OAuth M2M, secret via DATABRICKS_CLIENT_SECRET (14-day lifetime)
+    flags:
+      enable_workspace: {value: true, since: "2026-09-24"}
+      enable_unity_catalog: {value: true, since: "2026-09-24"}
+    resources:
+      - aws_iam_role.crossaccount (retail-finance-platform-dbx-crossaccount; ExternalId = Databricks account ID; "restricted" policy pinned to VPC + SG)
+      - databricks_mws_credentials / storage_configurations / vpc_endpoint x2 / private_access_settings / networks
+      - databricks_mws_workspaces.this (retail-finance-platform, ENTERPRISE, HYBRID, https://dbc-011bcfbf-172d.cloud.databricks.com)
+      - databricks_mws_permission_assignment x2 (service principal + owner as workspace ADMIN)
+      - databricks_storage_credential.governed (isolated)
+      - aws_iam_role.unity_catalog (retail-finance-platform-dbx-unity-catalog; trusts UC master role with issued external ID; self-assuming)
+      - databricks_external_location.governed (s3 root of the governed bucket, isolated)
+    notes:
+      - Workspace auto-attached to metastore_aws_eu_central_1 (one metastore per region).
+      - "Front-end access is public (UI over internet, Databricks auth); back-end is PrivateLink only."
+    verified: "2026-09-25: workspace RUNNING/ENTERPRISE/HYBRID; UC validation READ, LIST, WRITE, DELETE all PASS"
+
+iam:
+  plan_role:
+    trust: "repo:kheuchi@47268855/retail-finance-platform-infra@1371524439:ref:refs/heads/main"
+    permissions: [ReadOnlyAccess managed policy, state read (bootstrap + databricks keys), lock objects only]
+  deploy_role:
+    trust: "repo:kheuchi@47268855/retail-finance-platform-infra@1371524439:environment:aws-bootstrap"
+    statements:
+      ManageBootstrapStateBucket: state bucket only
+      ManageAuditLogBucket: audit bucket only
+      ManageManagementEventTrail: trail ARN only
+      EnumerateCloudTrailTrails: '"*" - DescribeTrails/ListTrails have no resource type'
+      ManageDatabricksStorage: the two Databricks buckets only
+      ManageAuditLogGroup / ManageSecurityAlerting / ManageSecurityTopic: project log group, alarms, topic
+      ManageCloudTrailLogsRole / PassCloudTrailLogsRole: one role; PassRole only to cloudtrail.amazonaws.com
+      ReadAlertingConfiguration: '"*" read-only describes'
+      ManageAccountBootstrapControls: '"*" - password policy has no ARN'
+      ManageProjectGitHubRoles: roles named retail-finance-platform-github-*
+      ManageDatabricksRoles: roles named retail-finance-platform-dbx-*; inline policies only; no PassRole
+      ManageGitHubIdentityProvider: the GitHub OIDC provider
+      ManageProjectBudget: the one budget ARN
+      ReadNetworkInventory: '"*" - ec2:Describe* has no resource-level support'
+      CreateDatabricksNetworkResources: EC2 creates, only when the request carries tag Application=retail-finance-platform
+      ManageDatabricksNetwork: EC2 modify/delete, only on resources tagged Application=retail-finance-platform
+      CreateDatabricksSecurityGroupRules: Authorize* on new security-group-rule ARNs only, request-tagged
+      DeliverFlowLogsToS3: '"*" - log deliveries have no resource type'
+      AssociateEndpointPrivateDns: route53 VPC association on hosted zones (private DNS for endpoints)
+    verification: IAM policy simulator before applies, including negative cases (foreign SG, non-dbx role -> denied)
+
+ci_cd:
+  workflows:
+    ci.yml: [fmt, validate both stacks, bash -n, Checkov both stacks, AWS plan both stacks on main, semantic-release]
+    deploy-bootstrap.yml: manual dispatch from main, type "apply", aws-bootstrap environment, plan -> apply saved plan
+    deploy-databricks.yml: same gate; shares concurrency group with bootstrap (never both at once)
+  branch_protection_main: [PR required, Terraform checks + Checkov required, up to date, linear history, no force push, no delete, applies to admins]
+  repo: public since 2026-09-21; secret scanning + push protection + Dependabot security updates on
+  variables: [AWS_PLAN_ROLE_ARN, AWS_DEPLOY_ROLE_ARN (environment), DATABRICKS_ACCOUNT_ID, DATABRICKS_CLIENT_ID, DATABRICKS_WORKSPACE_ADMIN]
+  secrets: [TF_VAR_budget_alert_email (no trailing newline), DATABRICKS_CLIENT_SECRET]
+  releases: semantic-release, Conventional Commits (feat = minor, fix = patch, feat! = major)
+  actions_pinned_to_sha: true
+
+costs_usd_month:
+  bootstrap_without_network: "~1 (CloudTrail storage, logs, alarms)"
+  databricks_network: "~64 (4 interface endpoints x 2 AZ x ~0.011/h); S3 gateway free"
+  nat_gateway_alternative: "~38 + data processing (not used)"
+  databricks_dbus: covered by USD 400 trial credit until 2026-10-06
+  ec2_clusters: only while clusters run
+
+checkov:
+  status: "2026-09-24: bootstrap 244 passed / 0 failed / 34 skipped; databricks 15 passed / 0 failed"
+  blind_spots: [resources with count = 0, IAM policies generated by Databricks provider data sources]
+  exceptions:
+    - check: "CKV_AWS_18"
+      where: "state/Databricks buckets"
+      why: "access logging deferred; CloudTrail data events cover state"
+    - check: "CKV2_AWS_62"
+      where: "buckets"
+      why: "no consumer for event notifications"
+    - check: "CKV_AWS_144"
+      where: "buckets"
+      why: "cross-region replication contradicts single-region decision, doubles cost"
+    - check: "CKV_AWS_145 / CKV_AWS_35 / CKV_AWS_158 / CKV_AWS_26"
+      where: "buckets, trail, log group, topic"
+      why: "KMS CMK costs; SSE-S3 + TLS enforced; revisit with classified data"
+    - check: "CKV_AWS_338"
+      where: "log group"
+      why: "90 days in CloudWatch is the trigger copy; S3 keeps 365 days"
+    - check: "CKV_AWS_252"
+      where: "trail"
+      why: "delivery notifications are not a detection; metric filters are"
+    - check: "CKV_AWS_356 / CKV_AWS_111"
+      where: "deploy role"
+      why: "\"*\" only where AWS has no resource type (password policy, Describe*, log deliveries)"
+    - check: "CKV2_AWS_5"
+      where: "workspace SG"
+      why: "attached at runtime by Databricks to instances Terraform never creates"
+    - check: "CKV2_AWS_5 / CKV2_AWS_11 / CKV2_AWS_12"
+      where: "endpoint SG, VPC"
+      why: "false positive - graph does not follow [0] indexes; verified in AWS"
+    - check: "CKV_AWS_24 / 25 / 260"
+      where: "intra-cluster rules"
+      why: "false positive - source is the SG itself, not 0.0.0.0/0"
+
+incidents:
+  - date: "2026-09-14"
+    what: "OIDC role assumption failed"
+    cause: "GitHub hardened subject uses numeric IDs"
+    fix: "trust policy from real claim in CI logs"
+  - date: "2026-09-15"
+    what: "budget validation failed in CI"
+    cause: "blank/newline secret arrives as empty string"
+    fix: "printf-set secret; clearer error"
+  - date: "2026-09-16"
+    what: "deploy role plan failed"
+    cause: "missing read actions not matching s3:GetBucket*"
+    fix: "break-glass -target apply"
+  - date: "2026-09-16"
+    what: "trail read-back failed"
+    cause: "DescribeTrails has no resource type"
+    fix: "\"*\" statement; break-glass; trail replaced (tainted)"
+  - date: "2026-09-17"
+    what: "bucket name too long"
+    cause: "65 chars > S3 limit 63"
+    fix: "shortened to dbx-root / dbx-uc before creation"
+  - date: "2026-09-17"
+    what: "alarm filter never matched"
+    cause: "$.readOnly = false is valid syntax but matches nothing"
+    fix: "use IS FALSE; tested with a real write"
+  - date: "2026-09-21"
+    what: "Azure trial billed a NAT gateway idle"
+    cause: "trial tier forces hybrid workspace"
+    fix: "workspace deleted same day"
+  - date: "2026-09-22"
+    what: "semantic-release failed"
+    cause: "history rewrite re-pointed only 3 of 13 tags (verified locally, not on remote)"
+    fix: "remapped all tags"
+  - date: "2026-09-24"
+    what: "permissions-first plan failed"
+    cause: "ungated data source read at plan time"
+    fix: "gate aws_availability_zones with count"
+  - date: "2026-09-24"
+    what: "apply failed on state lock"
+    cause: "CI plan and deploy ran at once"
+    fix: "wait for CI before deploy"
+  - date: "2026-09-24"
+    what: "merge blocked"
+    cause: "Checkov saw network resources for the first time (9 false positives)"
+    fix: "documented skips; verified in AWS"
+  - date: "2026-09-24"
+    what: "VPC endpoint registration failed (\"Unable to load OAuth Config\")"
+    cause: "account_id needed but not marked required"
+    fix: "added account_id"
+
+toolchain:
+  where: WSL2 Ubuntu 22.04 against /mnt/c/Users/cheik/.vscode/retail-finance-platform-infra
+  versions: {terraform: 1.14.6, aws_cli: 2.36.44, aws_provider: "~> 6.61", databricks_provider: "~> 1.134", time_provider: "~> 0.14", checkov: 3.3.17}
+  notes:
+    - aws is in ~/.local/bin; non-login shells need PATH="$HOME/.local/bin:$PATH"
+    - Terraform cannot read the aws login session; export with 'aws configure export-credentials --format env'
+    - AWS CLI default region is eu-north-1; pass --region eu-central-1 or fix the profile
+    - Databricks locally reads ~/.databrickscfg (outside the repo, chmod 600)
+    - Azure CLI cleared of employer tenant 2026-09-22; gcloud still holds 3 employer service accounts
