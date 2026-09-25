@@ -36,7 +36,7 @@
 # endpoint only, which understated the cost by half. The VPC, subnets, route
 # tables, security groups and S3 gateway endpoint are free. There is no NAT.
 #
-# See docs/architecture/databricks-network.md.
+# See docs/architecture.md and cmdb.yml (stacks.bootstrap.databricks_network).
 
 # Gated like everything else in this file, and for a reason worth recording: a
 # data source is read during plan whether or not anything references it, so an

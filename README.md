@@ -1,56 +1,33 @@
-# Retail Finance Platform Infrastructure
+# Retail Finance Platform: Infrastructure
 
-Terraform infrastructure for the AWS and Databricks retail-finance platform.
+Terraform for the AWS and Databricks side of the
+[retail finance platform](https://github.com/kheuchi/retail-finance-platform-control-plane):
+a private Databricks lakehouse for a large retailer's accounting department.
 
-This repository owns deployable cloud infrastructure only. Application code,
-data transformations, ML models, and agent implementations belong in separate
-repositories listed by the control plane's `REPOSITORIES.md`.
+## What's deployed (eu-central-1)
 
-## Current contents
+- **Foundation:** state bucket, USD 50 budget, CI roles via GitHub OIDC, CloudTrail,
+  alarms on break-glass and root use.
+- **Network:** private VPC, **no internet gateway, no NAT**, PrivateLink to Databricks.
+- **Databricks:** classic Enterprise workspace in that VPC, Unity Catalog on our own S3.
 
-- `bootstrap/`: remote Terraform state, AWS Budget alerts, and the IAM account
-  password policy.
-- `databricks/`: a second stack for the Databricks side — cross-account and Unity
-  Catalog roles, account registrations, the classic Enterprise workspace, and the
-  governed external location. Reads `bootstrap/` outputs; never the reverse.
-- `docs/architecture/`: infrastructure-specific architecture decisions, including
-  the costed Frankfurt network, audit and Databricks foundation proposal.
-- `docs/security/checkov-exceptions.md`: every accepted policy-scan exception, with
-  its residual risk and the trigger that would make us revisit it.
-- `docs/runbooks/break-glass.md`: what to do when the deployment pipeline cannot
-  repair itself and a human must intervene directly.
-- `docs/architecture/databricks-prerequisites.md`: what the lakehouse needs from
-  AWS, what is already built, and the one value still required to finish it.
-- `.github/workflows/ci.yml`: Terraform checks, advisory Checkov, and automated
-  semantic releases.
-- `.github/workflows/deploy-bootstrap.yml`: manually gated, OIDC-authenticated
-  bootstrap deployment from `main`.
-- `.github/workflows/deploy-databricks.yml`: the same gate for the `databricks/`
-  stack, sharing a concurrency group so the two stacks never apply at once.
+Running cost: ~USD 2/day while the network is on. Teardown due **2026-10-06**.
 
-The bootstrap stack is deployed in `eu-central-1` and uses a protected remote
-backend. GitHub plans and deployments use temporary OIDC role sessions; no AWS
-access keys are stored in GitHub.
+## Layout
 
-## Security assurance
+| Path | What |
+|---|---|
+| `bootstrap/` | AWS foundation, network, buckets |
+| `databricks/` | Databricks roles, workspace, Unity Catalog (reads `bootstrap/` outputs) |
+| `docs/architecture.md` | How it fits together |
+| `docs/ci-cd.md` | How changes get deployed |
+| `docs/runbooks/` | Break-glass and teardown |
+| `docs/security/checkov-exceptions.md` | Scanner findings we accept, and why |
+| `cmdb.yml` | Full detail: resources, IAM, costs, incidents |
 
-The threat model, control matrix and responsibility matrix covering this
-infrastructure live in the control-plane repository under `docs/security/`. They sit
-there rather than here because they span repositories rather than describing this one
-alone, and every control marked implemented in that matrix points back at a file in
-`bootstrap/`.
+## Rules
 
-Four gaps are currently open against this repository and its pipeline, two of them
-rated Critical, and both Critical ones are in GitHub rather than in AWS:
-two-factor authentication is off on the owning account, and nothing technically
-prevents an unreviewed push to `main` — the branch this repository's AWS trust policy
-accepts. The typed `apply` confirmation on the deploy workflow is a typo guard, not
-an authorisation control. See the control-plane threat model for the full record.
-
-## Safety rule
-
-Run `terraform plan` and review persistent-cost resources before every apply.
-Never commit credentials, generated plans, state files, or local variable files.
-
-Use Conventional Commits because semantic-release derives versions from commit
-history. See `docs/ci-cd.md` for pipeline behavior and GitHub settings.
+- Every change goes through a pull request; `main` is protected, admins included.
+- Deploys run from GitHub Actions with short-lived OIDC credentials. No stored keys.
+- Never commit credentials, state, plans or `*.tfvars`.
+- Use Conventional Commits (`feat:`, `fix:`); releases are automatic.

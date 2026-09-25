@@ -1,85 +1,30 @@
-# Infrastructure CI/CD
+# CI/CD
 
-## Plain-language behavior
+## On every pull request
 
-Every pull request checks that Terraform is formatted and valid. Checkov reports
-security issues as advice while the baseline matures. A successful merge to `main`
-uses commit messages to calculate a version and create a GitHub release.
+Format, validate both stacks, check shell scripts, scan with Checkov.
+Merge needs a pull request, green `Terraform checks` and `Checkov`, and applies to admins too.
 
-## Technical flow
+## On merge to `main`
 
-1. Terraform formatting and schema validation run without AWS credentials.
-2. Repository shell scripts receive syntax validation with `bash -n`.
-3. Checkov 3.3.17 scans Terraform; `continue-on-error` makes it non-blocking by
-   explicit project decision.
-4. A push to `main` exchanges GitHub's OIDC token for a temporary AWS plan-role
-   session and runs a real refresh plan against the Frankfurt remote state.
-5. semantic-release 25.0.9 runs on Node 24.15.0 only after Terraform and AWS plan
-   checks succeed
-   on `main`, creating a version tag and GitHub Release without pushing generated
-   commits back into the protected branch.
+A real Terraform plan of both stacks against AWS (read-only role), then an automatic
+release from the commit messages (`feat:` minor, `fix:` patch, `feat!:` major).
 
-## Conventional Commits
+## To deploy
 
-- `feat: ...` produces a minor release.
-- `fix: ...` produces a patch release.
-- `feat!: ...` or a `BREAKING CHANGE:` footer produces a major release.
-- Other commit types normally produce no release.
+**Actions → Deploy AWS Bootstrap** or **Deploy Databricks Workspace** → type `apply`.
+The job plans, saves the plan, and applies exactly that file. Both workflows share a
+lock group, so they never run at once. Wait for post-merge CI to finish first.
 
-## Security controls
+## Why it's safe
 
-- Workflow permissions default to read-only.
-- Only the release job receives write permission.
-- Actions are pinned to immutable commit SHAs.
-- npm dependencies are exact and locked.
-- Dependabot proposes controlled Actions and npm updates.
-- CI uses no administrator profile or long-lived AWS keys.
-- The AWS plan role trusts only this repository's immutable owner/repository IDs and
-  `main` branch. Pull requests run static checks without AWS access, preventing
-  untrusted PR code from reading AWS or surviving a repository rename/name reuse.
-- Applies require a manual workflow dispatch from `main`, the literal confirmation
-  word `apply`, the `aws-bootstrap` Environment, and a separately scoped deployment
-  role. The job saves a plan and applies that exact file, so nothing can change
-  between plan and apply inside the run. Be precise about what this does not do:
-  the plan is generated and consumed in the same job, so no human reads it in
-  between. The human gate is the dispatch, not a plan review.
-- The current private-repository GitHub plan does not support Environment reviewer
-  protection. Manual dispatch is the portfolio gate; required reviewers are the
-  documented enterprise upgrade.
+- No AWS keys in GitHub: short-lived OIDC sessions, trusted by numeric repo ID.
+- Plan role is read-only; deploy role is scoped per resource.
+- Actions pinned to commit SHAs; Dependabot keeps them current.
+- Secret scanning and push protection on (the repo is public).
 
-## Required GitHub settings
+Honest limit: one maintainer, so required approvals are 0. The gate is the PR plus
+the manual dispatch, not a second reviewer.
 
-- Default branch: `main`.
-- Allow GitHub Actions to create repository releases.
-- Protect `main` and require `Terraform checks` before merge.
-- Do not require `Checkov advisory scan` while it remains non-blocking.
-- Store `AWS_PLAN_ROLE_ARN` as a repository variable, `AWS_DEPLOY_ROLE_ARN` as an
-  `aws-bootstrap` Environment variable, and the notification address as the masked
-  `TF_VAR_BUDGET_ALERT_EMAIL` Actions secret. GitHub stores secret names in upper
-  case and resolves `secrets.*` case-insensitively, so the workflow's lower-case
-  reference is correct and must stay lower case after `TF_VAR_` for Terraform to
-  map it onto the `budget_alert_email` variable.
-- Set that secret with no trailing newline, for example
-  `printf '%s' "$email" | gh secret set TF_VAR_BUDGET_ALERT_EMAIL`. A trailing
-  newline or a blank value fails the variable validation, because GitHub supplies a
-  missing secret as an empty string rather than omitting the environment variable.
-
-## Local verification
-
-Run `./scripts/validate-local.sh` before committing to validate JSON, workflow YAML,
-Terraform formatting, and shell syntax. It needs no AWS credentials.
-
-Run the pipeline from WSL2 (Ubuntu), not from Windows, so the toolchain matches the
-CI runner. `PROJECT_CONTEXT.md` lists the verified versions. Because the AWS CLI is
-installed under `~/.local/bin`, non-login shells must export
-`PATH="$HOME/.local/bin:$PATH"` before calling the scripts.
-
-To inspect a pipeline failure without guessing, read the run's retained logs:
-
-```bash
-gh run list --limit 5
-gh run view <run-id> --log-failed
-```
-
-GitHub retains the decoded OIDC claims of past runs, which is how the hardened
-subject format was recovered rather than inferred.
+Settings, variables and secret names: `cmdb.yml` → `ci_cd`.
+Debug a run: `gh run view <id> --log-failed`.
