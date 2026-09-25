@@ -9,6 +9,10 @@ bucket, audit trail and CI roles are out of reach.
 |---|---|---|
 | `enable_workspace` | Cross-account role, account registrations, classic Enterprise workspace, admin assignments | On |
 | `enable_unity_catalog` | Storage credential, its IAM role, external location on the governed bucket | On |
+| `enable_guardrails` | `finance-small` cluster policy; users can create clusters only through it | On |
+
+Always with the workspace: serverless egress restricted to the governed bucket, and
+Databricks budget alerts at USD 100 / 200 / 300 / 380 (see `guardrails.tf`).
 
 Order: bootstrap network first, then workspace, then Unity Catalog (it needs the
 workspace URL). Enabling too early fails with a clear message.
@@ -21,6 +25,8 @@ workspace URL). Enabling too early fails with a clear message.
   principal tag), which blocks the "confused deputy" problem.
 - The cross-account role can only launch instances in **our** VPC and security group.
 - Auth is a service principal with a 14-day secret; target is OIDC with no secret.
+- Clusters stop after 10–30 min, max 2 small workers, spot, no Photon. Admins can
+  bypass the policy, so for the owner it's a default; the budget alerts still apply.
 
 ## Gotchas (provider 1.134)
 

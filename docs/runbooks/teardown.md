@@ -11,9 +11,11 @@ Order matters: Unity Catalog → workspace → network. Each step is one PR plus
 
 > Detail: [`../../cmdb.yml`](../../cmdb.yml) → `stacks.bootstrap.flags, stacks.databricks.flags`
 
-1. **Unity Catalog off.** In `databricks/variables.tf` set `enable_unity_catalog = false`.
-   PR, merge, **Deploy Databricks Workspace**. (Must run while the workspace still exists.)
-2. **Workspace off.** Set `enable_workspace = false`. PR, merge, deploy again.
+1. **Workspace objects off.** In `databricks/variables.tf` set `enable_unity_catalog = false`
+   and `enable_guardrails = false`. PR, merge, **Deploy Databricks Workspace**.
+   (Must run while the workspace still exists.)
+2. **Workspace off.** Set `enable_workspace = false`. PR, merge, deploy again. This also
+   removes the serverless network policy and the Databricks budget.
 3. **Network off.** In `bootstrap/variables.tf` set `enable_databricks_network = false`.
    PR, merge, **Deploy AWS Bootstrap**. (The VPC can't be deleted while a workspace uses it.)
 4. **Databricks account:** delete the starter serverless workspace, then cancel the

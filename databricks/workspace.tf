@@ -108,6 +108,10 @@ resource "databricks_mws_workspaces" "this" {
     CostCenter  = "finance-data-platform"
     Owner       = var.owner
   }
+
+  # Not a creation-order need: it makes Terraform destroy the workspace before the
+  # serverless network policy, whose assignment cannot be deleted on its own.
+  depends_on = [databricks_account_network_policy.serverless_restricted]
 }
 
 # Account admins are not automatically workspace admins. The service principal
