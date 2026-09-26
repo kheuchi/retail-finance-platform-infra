@@ -1,13 +1,21 @@
 # Runbook: Break-Glass
 
-**Contents:** [Steps](#steps) · [Used so far](#used-so-far) · [Known weaknesses](#known-weaknesses)
+**Contents:** [TL;DR](#tldr) · [Steps](#steps) · [Used so far](#used-so-far) · [Known weaknesses](#known-weaknesses)
 
-Use only when the pipeline **cannot fix itself**, e.g. the deploy role lacks the very
-permission it needs to plan. If the pipeline still runs, fix it by PR instead.
+Why it exists: [story 1.3](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/1.3-least-privilege-deploy-role.md).
 
-Every use raises an alarm by email (tested). That's intended.
+## TL;DR
+
+| Question | Answer |
+|---|---|
+| When | Only when the pipeline **cannot fix itself** (e.g. the deploy role lacks the permission it needs to plan) |
+| Who | The named admin `cheikh-platform-admin` with MFA, **never root** |
+| Side effect | Every write raises an alarm by email (tested). That's intended |
+| After | Prove the pipeline works again, record the incident in `cmdb.yml` |
 
 ## Steps
+
+> **TL;DR:** log in, plan one resource, apply that plan, hand back to CI.
 
 1. **Log in as the named admin, never root.**
    ```bash
@@ -25,12 +33,14 @@ Every use raises an alarm by email (tested). That's intended.
 
 ## Used so far
 
-> Detail: [`../../cmdb.yml`](../../cmdb.yml) → `incidents`
+> **TL;DR:** twice, both on 2026-09-16. Detail: [`../../cmdb.yml`](../../cmdb.yml) → `incidents`
 
-Twice on 2026-09-16: missing read permissions, then a CloudTrail action with no
-resource type. Both are in `cmdb.yml`.
+Missing read permissions, then a CloudTrail action with no resource type.
+Since then the two-phase apply and the IAM simulator have kept it unused.
 
 ## Known weaknesses
+
+> **TL;DR:** honest gaps, with the target state.
 
 Broad admin identity, same person as the normal path, never rehearsed on purpose.
 Target: a separate MFA-only emergency role, paged on use, rehearsed on a schedule.
