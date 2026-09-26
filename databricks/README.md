@@ -8,7 +8,7 @@ bucket, audit trail and CI roles are out of reach.
 | Flag | Creates | State |
 |---|---|---|
 | `enable_workspace` | Cross-account role, account registrations, classic Enterprise workspace, admin assignments | On |
-| `enable_unity_catalog` | Storage credential, its IAM role, external location on the governed bucket | On |
+| `enable_unity_catalog` | Storage credential + IAM role, external location, `finance` catalog (raw/bronze/silver/gold), groups and grants | On |
 | `enable_guardrails` | `finance-small` cluster policy; users can create clusters only through it | On |
 
 Always with the workspace: serverless egress restricted to the governed bucket, and
