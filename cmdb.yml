@@ -88,7 +88,7 @@ stacks:
       - databricks_storage_credential.governed (isolated)
       - aws_iam_role.unity_catalog (retail-finance-platform-dbx-unity-catalog; trusts UC master role with issued external ID; self-assuming)
       - databricks_external_location.governed (s3 root of the governed bucket, isolated)
-      - "databricks_cluster_policy.finance_small: autotermination 10-30 min (default 15), 0-2 workers (default single node), m6gd/m5d large|xlarge, runtimes 17.3/16.4 LTS, spot + on-demand driver, no Photon, no instance profiles, SINGLE_USER|USER_ISOLATION, 1 cluster per user, CostCenter tag fixed"
+      - "databricks_cluster_policy.finance_small: autotermination 10-30 min (default 15), 0-2 workers (default single node), m6gd/m5d large|xlarge, runtimes 17.3/16.4 LTS, spot + on-demand driver, no Photon, no instance profiles, SINGLE_USER|USER_ISOLATION, 1 cluster per user, Guardrail tag fixed (CostCenter comes from the workspace tag)"
       - "users group: no entitlements (workspace default, locked); a Terraform check asserts no allow_cluster_create on every plan; databricks_permissions: users CAN_USE the policy"
       - "databricks_account_network_policy.serverless_restricted: serverless egress RESTRICTED_ACCESS, only the governed bucket, ENFORCED; assigned via databricks_workspace_network_option (delete is a no-op, so the workspace depends on the policy)"
       - "finance catalog (ISOLATED, storage in governed bucket /catalogs/finance) with schemas raw, bronze, silver, gold and managed volume raw.landing; force_destroy on (synthetic data)"
@@ -248,6 +248,10 @@ incidents:
     what: "setting users-group entitlements refused"
     cause: "new workspaces lock entitlements on the users and admins groups"
     fix: "group already has no entitlements (verified via SCIM); replaced the resource with a Terraform check that asserts it"
+  - date: "2026-09-26"
+    what: "first job rejected by the cluster policy"
+    cause: "autoscale.max_workers range lacked isOptional (made autoscale mandatory); CostCenter tag fixed in policy clashed with the workspace-level tag"
+    fix: "isOptional on autoscale; CostCenter left to the workspace tag"
 
 # ──────────── toolchain ────────────
 toolchain:
