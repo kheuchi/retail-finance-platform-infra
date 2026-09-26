@@ -337,6 +337,24 @@ resource "aws_vpc_security_group_ingress_rule" "databricks_endpoint_scc_relay" {
   description                  = "Secure cluster connectivity relay from the compute plane"
 }
 
+# Control-plane API ports behind the workspace PrivateLink endpoint: 8443 and 8445
+# internal compute-to-control-plane calls, 8444 Unity Catalog lineage, 8446-8451
+# reserved. The compute side already allowed these out; the endpoint side did
+# not let them in. VPC flow logs from the first job showed over a thousand
+# rejected connections to the workspace endpoint on 8443-8449, which broke
+# library installation from both workspace files and volumes. The Terraform
+# PrivateLink guide this was first written from lists only 443 and 6666.
+resource "aws_vpc_security_group_ingress_rule" "databricks_endpoint_control_plane" {
+  count = local.databricks_network_count
+
+  security_group_id            = aws_security_group.databricks_endpoint[0].id
+  referenced_security_group_id = aws_security_group.databricks_workspace[0].id
+  ip_protocol                  = "tcp"
+  from_port                    = 8443
+  to_port                      = 8451
+  description                  = "Control plane API and Unity Catalog lineage from the compute plane"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "databricks_endpoint_https" {
   count = local.databricks_network_count
 
