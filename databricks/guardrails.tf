@@ -1,7 +1,7 @@
 # Cost and egress guardrails for the workspace.
 #
 # Four controls, each for a way the trial could go wrong:
-#   1. A cluster policy, so compute is small, cheap and stops itself.
+#   1. Cluster policies, so compute is small, cheap and stops itself.
 #   2. Users create clusters only through that policy.
 #   3. Serverless compute, which runs outside our VPC, may reach only our governed
 #      bucket and nothing on the internet.
@@ -22,27 +22,21 @@ locals {
   serverless_network_policy_id = "retail-finance-serverless"
 }
 
-# ── 1. Cluster policy ────────────────────────────────────────────────
-resource "databricks_cluster_policy" "finance_small" {
-  count    = local.guardrails_count
-  provider = databricks.workspace
-
-  name                  = "finance-small"
-  description           = "Small, auto-terminating, spot-backed clusters for the finance platform. Default is single node."
-  max_clusters_per_user = 1
-
-  definition = jsonencode({
+# ── 1. Cluster policies ──────────────────────────────────────────────
+# Two policies, because interactive and job clusters differ in one way that
+# matters: job clusters cannot carry auto-termination (they stop when the job
+# ends), and Databricks rejects them if a policy injects it. Everything else,
+# size, runtime, spot, access mode, is shared.
+locals {
+  common_policy = {
     "spark_version"       = { type = "allowlist", values = local.allowed_runtimes, defaultValue = local.allowed_runtimes[0] }
     "node_type_id"        = { type = "allowlist", values = local.allowed_node_types, defaultValue = local.allowed_node_types[0] }
     "driver_node_type_id" = { type = "allowlist", values = local.allowed_node_types, defaultValue = local.allowed_node_types[0] }
 
-    # Stops by itself. The single biggest cost control on Databricks.
-    "autotermination_minutes" = { type = "range", minValue = 10, maxValue = 30, defaultValue = 15 }
-
     # At most two workers. Default is single node: one VM, no workers.
     "num_workers" = { type = "range", minValue = 0, maxValue = 2, defaultValue = 0 }
     # Optional: without isOptional the policy makes autoscale mandatory, and every
-    # fixed-size or single-node cluster fails validation. Found by the first job.
+    # fixed-size or single-node cluster fails validation.
     "autoscale.max_workers" = { type = "range", maxValue = 2, isOptional = true }
     "spark_conf.spark.databricks.cluster.profile" = {
       type = "unlimited", defaultValue = "singleNode", isOptional = true
@@ -62,14 +56,39 @@ resource "databricks_cluster_policy" "finance_small" {
 
     # Photon bills more DBUs per hour; not needed at this data volume.
     "runtime_engine" = { type = "fixed", value = "STANDARD" }
-    "cluster_type"   = { type = "allowlist", values = ["all-purpose", "job"] }
 
     # CostCenter is not set here: the workspace already stamps it on every cluster
-    # (custom_tags on databricks_mws_workspaces), and fixing it again in the policy
-    # is a naming conflict that fails validation. The workspace tag is the stronger
-    # control anyway: it applies to all clusters, not only policy-governed ones.
-    "custom_tags.Guardrail" = { type = "fixed", value = "finance-small" }
-  })
+    # (custom_tags on databricks_mws_workspaces), and fixing it again in a policy is
+    # a naming conflict that fails validation.
+  }
+}
+
+resource "databricks_cluster_policy" "finance_small" {
+  count    = local.guardrails_count
+  provider = databricks.workspace
+
+  name                  = "finance-small"
+  description           = "Interactive clusters: small, spot-backed, auto-terminating after 10-30 minutes idle. Default is single node."
+  max_clusters_per_user = 1
+
+  definition = jsonencode(merge(local.common_policy, {
+    "cluster_type"            = { type = "fixed", value = "all-purpose" }
+    "autotermination_minutes" = { type = "range", minValue = 10, maxValue = 30, defaultValue = 15 }
+    "custom_tags.Guardrail"   = { type = "fixed", value = "finance-small" }
+  }))
+}
+
+resource "databricks_cluster_policy" "finance_jobs" {
+  count    = local.guardrails_count
+  provider = databricks.workspace
+
+  name        = "finance-jobs"
+  description = "Job clusters: same size and cost limits as finance-small. They stop when the job ends, so no auto-termination."
+
+  definition = jsonencode(merge(local.common_policy, {
+    "cluster_type"          = { type = "fixed", value = "job" }
+    "custom_tags.Guardrail" = { type = "fixed", value = "finance-jobs" }
+  }))
 }
 
 # ── 2. Clusters only through the policy ──────────────────────────────
@@ -99,6 +118,18 @@ resource "databricks_permissions" "finance_small_policy" {
   provider = databricks.workspace
 
   cluster_policy_id = databricks_cluster_policy.finance_small[0].id
+
+  access_control {
+    group_name       = data.databricks_group.users[0].display_name
+    permission_level = "CAN_USE"
+  }
+}
+
+resource "databricks_permissions" "finance_jobs_policy" {
+  count    = local.guardrails_count
+  provider = databricks.workspace
+
+  cluster_policy_id = databricks_cluster_policy.finance_jobs[0].id
 
   access_control {
     group_name       = data.databricks_group.users[0].display_name
