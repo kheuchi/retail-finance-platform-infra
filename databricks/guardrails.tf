@@ -40,8 +40,10 @@ resource "databricks_cluster_policy" "finance_small" {
     "autotermination_minutes" = { type = "range", minValue = 10, maxValue = 30, defaultValue = 15 }
 
     # At most two workers. Default is single node: one VM, no workers.
-    "num_workers"           = { type = "range", minValue = 0, maxValue = 2, defaultValue = 0 }
-    "autoscale.max_workers" = { type = "range", maxValue = 2 }
+    "num_workers" = { type = "range", minValue = 0, maxValue = 2, defaultValue = 0 }
+    # Optional: without isOptional the policy makes autoscale mandatory, and every
+    # fixed-size or single-node cluster fails validation. Found by the first job.
+    "autoscale.max_workers" = { type = "range", maxValue = 2, isOptional = true }
     "spark_conf.spark.databricks.cluster.profile" = {
       type = "unlimited", defaultValue = "singleNode", isOptional = true
     }
@@ -62,9 +64,11 @@ resource "databricks_cluster_policy" "finance_small" {
     "runtime_engine" = { type = "fixed", value = "STANDARD" }
     "cluster_type"   = { type = "allowlist", values = ["all-purpose", "job"] }
 
-    # Cost attribution on every instance, in AWS Cost Explorer.
-    "custom_tags.CostCenter" = { type = "fixed", value = "finance-data-platform" }
-    "custom_tags.Guardrail"  = { type = "fixed", value = "finance-small" }
+    # CostCenter is not set here: the workspace already stamps it on every cluster
+    # (custom_tags on databricks_mws_workspaces), and fixing it again in the policy
+    # is a naming conflict that fails validation. The workspace tag is the stronger
+    # control anyway: it applies to all clusters, not only policy-governed ones.
+    "custom_tags.Guardrail" = { type = "fixed", value = "finance-small" }
   })
 }
 
