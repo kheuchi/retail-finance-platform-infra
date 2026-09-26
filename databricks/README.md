@@ -1,40 +1,50 @@
 # databricks/
 
-**Contents:** [Security in one line each](#security-in-one-line-each) · [Gotchas (provider 1.134)](#gotchas-provider-1134)
+**Contents:** [TL;DR](#tldr) · [Flags](#flags) · [Security in one line each](#security-in-one-line-each) · [Gotchas](#gotchas-provider-1134)
 
 The Databricks side, as a separate stack: if something breaks here, the state
-bucket, audit trail and CI roles are out of reach.
+bucket, audit trail and CI roles are out of reach. Inventory: [`../cmdb.yml`](../cmdb.yml) → `stacks.databricks`.
+
+## TL;DR
+
+| Question | Answer |
+|---|---|
+| What | Cross-account role, workspace, Unity Catalog access, `finance` catalog, groups, guardrails |
+| Order | Bootstrap network → workspace → Unity Catalog (enabling too early fails with a clear message) |
+| Auth | Service principal `terraform-platform`, OAuth, 14-day secret (target: OIDC, no secret) |
+| Deploy | PR → merge → **Actions → Deploy Databricks Workspace** → type `apply` |
+| Stories | [2.3](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.3-workspace-as-code.md) · [2.4](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.4-unity-catalog-on-our-s3.md) · [2.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.5-guardrails.md) · [3.2](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/3.2-catalog-and-bundle-deploy.md) |
+
+## Flags
+
+> **TL;DR:** three switches, all on; teardown flips them off in reverse order.
 
 | Flag | Creates | State |
 |---|---|---|
-| `enable_workspace` | Cross-account role, account registrations, classic Enterprise workspace, admin assignments | On |
-| `enable_unity_catalog` | Storage credential + IAM role, external location, `finance` catalog (raw/bronze/silver/gold), groups and grants | On |
-| `enable_guardrails` | `finance-small` cluster policy; users can create clusters only through it | On |
-
-Always with the workspace: serverless egress restricted to the governed bucket, and
-Databricks budget alerts at USD 100 / 200 / 300 / 380 (see `guardrails.tf`).
-
-Order: bootstrap network first, then workspace, then Unity Catalog (it needs the
-workspace URL). Enabling too early fails with a clear message.
+| `enable_workspace` | Cross-account role, account registrations, classic Enterprise workspace, admin assignments, serverless egress policy, budget alerts (100/200/300/380) | On |
+| `enable_unity_catalog` | Storage credential + IAM role, external location, `finance` catalog (raw, bronze, silver, gold, ops), volumes `raw.landing` and `ops.artifacts`, groups and grants | On |
+| `enable_guardrails` | `finance-small` (interactive) and `finance-jobs` (job clusters) policies; users create clusters only through them | On |
 
 ## Security in one line each
 
-> Detail: [`../cmdb.yml`](../cmdb.yml) → `stacks.databricks, iam`
+> **TL;DR:** every trust is pinned to our account, every cluster is small. Detail: [`../cmdb.yml`](../cmdb.yml) → `stacks.databricks`
 
 - Databricks can only use our roles on behalf of **our** account (external IDs,
   principal tag), which blocks the "confused deputy" problem.
 - The cross-account role can only launch instances in **our** VPC and security group.
-- Auth is a service principal with a 14-day secret; target is OIDC with no secret.
-- Clusters stop after 10–30 min, max 2 small workers, spot, no Photon. Admins can
-  bypass the policy, so for the owner it's a default; the budget alerts still apply.
+- Clusters: max 2 small workers, spot, no Photon; interactive ones stop after 10–30 min.
+  Admins can bypass the policy, so for the owner it's a default; the budget alerts still apply.
+- Known gap: one service principal does platform, deploy and run-as duties
+  ([story 4.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/4.5-split-service-principals.md)).
 
 ## Gotchas (provider 1.134)
 
-> Detail: [`../cmdb.yml`](../cmdb.yml) → `incidents`
+> **TL;DR:** the provider has sharp edges; each one is an incident in the cmdb. Detail: [`../cmdb.yml`](../cmdb.yml) → `incidents`
 
-- `account_id` must be set on several `databricks_mws_*` resources even though the
-  provider has it. For VPC endpoints, validate passes and apply fails.
-- Null outputs aren't stored in state; bootstrap outputs are read with `try()`.
-- Checkov can't see the IAM policies the provider generates.
-
-Deploy: **Actions → Deploy Databricks Workspace → `apply`**. Detail: `cmdb.yml`.
+| Gotcha | Fix |
+|---|---|
+| `account_id` required on `databricks_mws_*` resources; for VPC endpoints the error says "Unable to load OAuth Config" | Always pass `account_id` |
+| Null outputs aren't stored in state | Read bootstrap outputs with `try()` |
+| Network policy ID limited to 32 characters (undocumented) | Short ID + a `precondition` |
+| Budget shows a diff on every plan | `ignore_changes` on the normalised fields |
+| Checkov can't see provider-generated IAM policies | Reviewed by hand |

@@ -1,5 +1,5 @@
-# cmdb.yml: the detailed record behind the short markdown docs in this repo.
-# Edit here; keep the .md files short. No secrets or account IDs in this file.
+# cmdb.yml: the inventory behind the short markdown docs in this repo (facts, IDs, status).
+# Explanations live in the control-plane stories: https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/README.md No secrets or account IDs in this file.
 # Bucket names contain the AWS account ID, shown here as <account>.
 
 # ======================================================================
@@ -12,11 +12,11 @@
 #   ci_cd              workflows, branch protection, variables and secret names
 #   costs_usd_month    what costs what
 #   checkov            scan status, blind spots, accepted exceptions
-#   incidents          what broke, why, how it was fixed
+#   incidents          what broke, why, how it was fixed, and the story that explains it
 #   toolchain          versions and local gotchas
 # ======================================================================
 
-updated: "2026-09-25"
+updated: "2026-09-27"
 region: eu-central-1
 
 # ──────────── stacks ────────────
@@ -193,78 +193,97 @@ incidents:
     what: "OIDC role assumption failed"
     cause: "GitHub hardened subject uses numeric IDs"
     fix: "trust policy from real claim in CI logs"
+    story: "1.2"
   - date: "2026-09-15"
     what: "budget validation failed in CI"
     cause: "blank/newline secret arrives as empty string"
     fix: "printf-set secret; clearer error"
+    story: "1.2"
   - date: "2026-09-16"
     what: "deploy role plan failed"
     cause: "missing read actions not matching s3:GetBucket*"
     fix: "break-glass -target apply"
+    story: "1.3"
   - date: "2026-09-16"
     what: "trail read-back failed"
     cause: "DescribeTrails has no resource type"
     fix: "\"*\" statement; break-glass; trail replaced (tainted)"
+    story: "1.3"
   - date: "2026-09-17"
     what: "bucket name too long"
     cause: "65 chars > S3 limit 63"
     fix: "shortened to dbx-root / dbx-uc before creation"
+    story: "2.4"
   - date: "2026-09-17"
     what: "alarm filter never matched"
     cause: "$.readOnly = false is valid syntax but matches nothing"
     fix: "use IS FALSE; tested with a real write"
+    story: "1.4"
   - date: "2026-09-21"
     what: "Azure trial billed a NAT gateway idle"
     cause: "trial tier forces hybrid workspace"
     fix: "workspace deleted same day"
+    story: "2.1"
   - date: "2026-09-22"
     what: "semantic-release failed"
     cause: "history rewrite re-pointed only 3 of 13 tags (verified locally, not on remote)"
     fix: "remapped all tags"
+    story: "1.5"
   - date: "2026-09-24"
     what: "permissions-first plan failed"
     cause: "ungated data source read at plan time"
     fix: "gate aws_availability_zones with count"
+    story: "2.2"
   - date: "2026-09-24"
     what: "apply failed on state lock"
     cause: "CI plan and deploy ran at once"
     fix: "wait for CI before deploy"
+    story: "2.2"
   - date: "2026-09-24"
     what: "merge blocked"
     cause: "Checkov saw network resources for the first time (9 false positives)"
     fix: "documented skips; verified in AWS"
+    story: "2.2"
   - date: "2026-09-24"
     what: "VPC endpoint registration failed (\"Unable to load OAuth Config\")"
     cause: "account_id needed but not marked required"
     fix: "added account_id"
+    story: "2.3"
   - date: "2026-09-25"
     what: "serverless network policy creation failed (Invalid NetworkPolicyId)"
     cause: "undocumented 32-character limit on network policy IDs; ours had 45"
     fix: "found the limit with read-only GETs; ID shortened to retail-finance-serverless; precondition added"
+    story: "2.5"
   - date: "2026-09-25"
     what: "databricks_budget showed a change on every plan"
     cause: "API normalises thresholds (100 -> 100.000000000000000000), reorders alerts, adds an empty filter"
     fix: "ignore_changes on alert_configurations and filter; thresholds verified via API"
+    story: "2.5"
   - date: "2026-09-25"
     what: "setting users-group entitlements refused"
     cause: "new workspaces lock entitlements on the users and admins groups"
     fix: "group already has no entitlements (verified via SCIM); replaced the resource with a Terraform check that asserts it"
+    story: "2.5"
   - date: "2026-09-26"
     what: "first job rejected by the cluster policy"
     cause: "autoscale.max_workers range lacked isOptional (made autoscale mandatory); CostCenter tag fixed in policy clashed with the workspace-level tag"
     fix: "isOptional on autoscale; CostCenter left to the workspace tag"
+    story: "3.3"
   - date: "2026-09-26"
     what: "job still rejected: automated clusters do not support autotermination"
     cause: "one policy served interactive and job clusters; it injected autotermination into job clusters"
     fix: "split into finance-small (all-purpose, auto-stop 10-30 min) and finance-jobs (job clusters, same limits, no auto-stop)"
+    story: "3.3"
   - date: "2026-09-26"
     what: "first job cluster could not install its wheel from /Workspace/Users/<service principal>/.bundle"
     cause: "file existed; cluster could not read workspace files (private-network workspace files or service-principal folder access; not isolated)"
     fix: "libraries installed from UC volume finance.ops.artifacts instead (S3 via gateway endpoint, path already proven)"
+    story: "3.3"
   - date: "2026-09-26"
     what: "job clusters could not fetch their wheel (workspace files, then volume: Connection reset)"
     cause: "endpoint security group admitted only 443 and 6666; control-plane API ports 8443-8451 were rejected (VPC flow logs: >1,000 REJECTs to the workspace endpoint on 8443-8449)"
     fix: "ingress 8443-8451 from the workspace SG on the endpoint SG. Root cause found in flow logs, not guessed"
+    story: "3.3"
 
 # ──────────── toolchain ────────────
 toolchain:

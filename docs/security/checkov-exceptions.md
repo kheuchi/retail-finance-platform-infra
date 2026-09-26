@@ -1,11 +1,22 @@
 # Checkov Exceptions
 
-**Contents:** [Blind spots](#blind-spots)
+**Contents:** [TL;DR](#tldr) · [Accepted findings](#accepted-findings) · [Blind spots](#blind-spots)
 
-Checkov scans the Terraform on every PR, and a failure blocks the merge. Every
-`#checkov:skip` in the code has a line here. Longer reasons: `cmdb.yml` → `checkov`.
+Every `#checkov:skip` in the code has a line here. Longer reasons: [`../../cmdb.yml`](../../cmdb.yml) → `checkov`.
+How we got here: stories [1.3](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/1.3-least-privilege-deploy-role.md) and [2.2](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.2-private-network.md).
 
-**Status (2026-09-24):** bootstrap 244 passed, 0 failed · databricks 15 passed, 0 failed.
+## TL;DR
+
+| Question | Answer |
+|---|---|
+| When does Checkov run? | On every PR; a failure blocks the merge |
+| Status (2026-09-24) | bootstrap 244 passed, 0 failed · databricks 15 passed, 0 failed |
+| Why skips at all? | Cost (KMS keys), no consumer (notifications), or false positives verified in AWS |
+| What can it not see? | `count = 0` resources and provider-generated IAM policies |
+
+## Accepted findings
+
+> **TL;DR:** three kinds: cost trade-offs, not-needed features, false positives.
 
 | Check | Where | Why we accept it |
 |---|---|---|
@@ -22,7 +33,7 @@ Checkov scans the Terraform on every PR, and a failure blocks the merge. Every
 
 ## Blind spots
 
-> Detail: [`../../cmdb.yml`](../../cmdb.yml) → `checkov.blind_spots`
+> **TL;DR:** a clean scan is not proof. Detail: [`../../cmdb.yml`](../../cmdb.yml) → `checkov.blind_spots`
 
 - Resources behind `count = 0` are invisible. A clean scan of switched-off code
   proves nothing.
