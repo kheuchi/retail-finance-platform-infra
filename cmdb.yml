@@ -66,7 +66,7 @@ stacks:
             ingress: [all TCP/UDP from itself]
             egress: [all TCP/UDP to itself, 443 to endpoint SG, 443 to S3 prefix list, 6666 to VPC CIDR, 8443-8451 to VPC CIDR]
             omitted: [3306 (legacy Hive metastore; we use Unity Catalog), 0.0.0.0/0 anywhere]
-          endpoint: {ingress: [443 and 6666 from workspace SG]}
+          endpoint: {ingress: [443, 6666 and 8443-8451 from workspace SG]}
           default: all rules stripped
         verified_in_aws: "2026-09-25: 0 IGW, 0 NAT, 0 routes to 0.0.0.0/0, 0 public IPs, 0 world-open rules, flow logs ACTIVE"
 
@@ -261,6 +261,10 @@ incidents:
     what: "first job cluster could not install its wheel from /Workspace/Users/<service principal>/.bundle"
     cause: "file existed; cluster could not read workspace files (private-network workspace files or service-principal folder access; not isolated)"
     fix: "libraries installed from UC volume finance.ops.artifacts instead (S3 via gateway endpoint, path already proven)"
+  - date: "2026-09-26"
+    what: "job clusters could not fetch their wheel (workspace files, then volume: Connection reset)"
+    cause: "endpoint security group admitted only 443 and 6666; control-plane API ports 8443-8451 were rejected (VPC flow logs: >1,000 REJECTs to the workspace endpoint on 8443-8449)"
+    fix: "ingress 8443-8451 from the workspace SG on the endpoint SG. Root cause found in flow logs, not guessed"
 
 # ──────────── toolchain ────────────
 toolchain:
