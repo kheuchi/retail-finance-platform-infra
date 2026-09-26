@@ -92,7 +92,7 @@ stacks:
       - "databricks_cluster_policy.finance_small (interactive only): autotermination 10-30 min (default 15), 0-2 workers (default single node), m6gd/m5d large|xlarge, runtimes 17.3/16.4 LTS, spot + on-demand driver, no Photon, no instance profiles, SINGLE_USER|USER_ISOLATION, 1 cluster per user, Guardrail tag fixed (CostCenter comes from the workspace tag)"
       - "users group: no entitlements (workspace default, locked); a Terraform check asserts no allow_cluster_create on every plan; databricks_permissions: users CAN_USE the policy"
       - "databricks_account_network_policy.serverless_restricted: serverless egress RESTRICTED_ACCESS, only the governed bucket, ENFORCED; assigned via databricks_workspace_network_option (delete is a no-op, so the workspace depends on the policy)"
-      - "finance catalog (ISOLATED, storage in governed bucket /catalogs/finance) with schemas raw, bronze, silver, gold and managed volume raw.landing; force_destroy on (synthetic data)"
+      - "finance catalog (ISOLATED, storage in governed bucket /catalogs/finance) with schemas raw, bronze, silver, gold, ops; managed volumes raw.landing and ops.artifacts (job wheels); force_destroy on (synthetic data)"
       - "groups finance-data-engineers (ALL_PRIVILEGES on catalog; owner is member) and finance-analysts (USE_CATALOG + gold USE_SCHEMA/SELECT only)"
       - "databricks_budget.trial: whole account, monthly, list-price USD alerts at 100/200/300/380 to the budget email"
     notes:
@@ -257,6 +257,10 @@ incidents:
     what: "job still rejected: automated clusters do not support autotermination"
     cause: "one policy served interactive and job clusters; it injected autotermination into job clusters"
     fix: "split into finance-small (all-purpose, auto-stop 10-30 min) and finance-jobs (job clusters, same limits, no auto-stop)"
+  - date: "2026-09-26"
+    what: "first job cluster could not install its wheel from /Workspace/Users/<service principal>/.bundle"
+    cause: "file existed; cluster could not read workspace files (private-network workspace files or service-principal folder access; not isolated)"
+    fix: "libraries installed from UC volume finance.ops.artifacts instead (S3 via gateway endpoint, path already proven)"
 
 # ──────────── toolchain ────────────
 toolchain:

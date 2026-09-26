@@ -4,6 +4,7 @@
 #   finance.bronze  as ingested, append-only
 #   finance.silver  typed, deduplicated, validated
 #   finance.gold    certified finance tables: what models and the agent read
+#   finance.ops     build artifacts (job wheels), kept apart from data
 #
 # Access goes to account-level groups, never to named users: that is the
 # enterprise pattern, and it keeps email addresses out of public plan logs.
@@ -20,6 +21,7 @@ locals {
     bronze = "Source data as ingested: append-only, schema captured, no cleaning."
     silver = "Typed, deduplicated and validated. Reconciliation checks run here."
     gold   = "Certified finance tables. The only schema analysts, models and the agent read."
+    ops    = "Operational artifacts such as job wheels. Not data."
   }
 }
 
@@ -84,6 +86,22 @@ resource "databricks_volume" "landing" {
   name         = "landing"
   volume_type  = "MANAGED"
   comment      = "Generated source files (CSV), one folder per source."
+}
+
+# Job libraries are installed from here rather than from workspace files. The first
+# job could not read its wheel from the service principal's workspace folder; a
+# volume sits in our S3 bucket, reached through the S3 gateway endpoint, which is a
+# path already proven by the Unity Catalog validation. Databricks also recommends
+# volumes for libraries on Unity Catalog compute.
+resource "databricks_volume" "artifacts" {
+  count    = local.catalog_count
+  provider = databricks.workspace
+
+  catalog_name = databricks_catalog.finance[0].name
+  schema_name  = databricks_schema.finance["ops"].name
+  name         = "artifacts"
+  volume_type  = "MANAGED"
+  comment      = "Job wheels deployed by Databricks Asset Bundles."
 }
 
 # ── Grants ───────────────────────────────────────────────────────────
