@@ -22,3 +22,13 @@ output "governed_external_location" {
   description = "Unity Catalog external location over the governed bucket."
   value       = try(databricks_external_location.governed[0].url, null)
 }
+
+output "deployer_application_id" {
+  description = "Application ID of finance-data-deployer (the data repo's DATABRICKS_CLIENT_ID). Not a secret."
+  value       = try(databricks_service_principal.deployer[0].application_id, null)
+}
+
+output "runner_application_id" {
+  description = "Application ID of finance-pipeline-runner (the data jobs' run_as). Not a secret."
+  value       = try(databricks_service_principal.runner[0].application_id, null)
+}
