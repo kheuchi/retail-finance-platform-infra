@@ -121,6 +121,17 @@ resource "databricks_grants" "catalog" {
     principal  = databricks_group.analysts[0].display_name
     privileges = ["USE_CATALOG"]
   }
+
+  # Pipeline identities (identities.tf): into the catalog, then per-schema grants only.
+  grant {
+    principal  = databricks_service_principal.runner[0].application_id
+    privileges = ["USE_CATALOG"]
+  }
+
+  grant {
+    principal  = databricks_service_principal.deployer[0].application_id
+    privileges = ["USE_CATALOG"]
+  }
 }
 
 # Analysts read Gold and nothing else: no raw data, no half-cleaned data.
@@ -133,5 +144,10 @@ resource "databricks_grants" "gold" {
   grant {
     principal  = databricks_group.analysts[0].display_name
     privileges = ["USE_SCHEMA", "SELECT"]
+  }
+
+  grant {
+    principal  = databricks_service_principal.runner[0].application_id
+    privileges = local.runner_schema_privileges
   }
 }
