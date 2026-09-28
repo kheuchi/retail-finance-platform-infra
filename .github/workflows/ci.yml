@@ -42,6 +42,8 @@ jobs:
         run: terraform validate
       - name: Validate shell syntax
         run: bash -n scripts/*.sh
+      - name: Test access audit allow-list
+        run: python3 -m unittest scripts/test_access_audit.py
 
   checkov:
     name: Checkov advisory scan
@@ -116,6 +118,13 @@ jobs:
           TF_VAR_workspace_admin_user: ${{ vars.DATABRICKS_WORKSPACE_ADMIN }}
           TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_budget_alert_email }}
         run: terraform plan -input=false -lock-timeout=5m -no-color
+      - name: Access audit (grants on every securable of the finance catalog)
+        working-directory: databricks
+        env:
+          DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          DATABRICKS_HOST="$(terraform output -raw workspace_url)"           RUNNER_ID="$(terraform output -raw runner_application_id)"           DEPLOYER_ID="$(terraform output -raw deployer_application_id)"           python3 ../scripts/access_audit.py
 
   release:
     name: Semantic release
