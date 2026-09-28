@@ -12,7 +12,7 @@ Inventory: [cmdb.yml](cmdb.yml). Explanations: [stories](https://github.com/kheu
 | Owns | Terraform state, AWS identity, audit, network, storage, Databricks workspace, their CI/CD |
 | Does not own | Data pipelines, models, agent code |
 | State | All four flags on; everything verified in AWS and via the Databricks API |
-| Next | Service principal split (after Gold), F-3 alarms, OIDC for Databricks, teardown 2026-10-06 |
+| Next | F-3 alarms, OIDC for Databricks, teardown 2026-10-06 (identity split done 2026-09-28) |
 
 ## This repo owns
 
@@ -53,7 +53,7 @@ Not application code, data pipelines, models or agent logic.
 
 | # | Item | Why |
 |---|---|---|
-| 1 | Split `terraform-platform` into platform, deploy and run-as service principals (after Gold) | One account admin currently also deploys and runs data jobs ([story 4.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/4.5-split-service-principals.md)) |
+| 1 | ~~Split `terraform-platform`~~ done 2026-09-28: deployer + runner, access audit in CI | [Story 4.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/4.5-split-service-principals.md) |
 | 2 | Alarms on audit-trail tampering and IAM changes | Finding F-3 |
 | 3 | Replace the Databricks secret with GitHub OIDC federation | Secret expires ~2026-10-08 |
 | 4 | **Teardown on 2026-10-06** | [Runbook](docs/runbooks/teardown.md) |

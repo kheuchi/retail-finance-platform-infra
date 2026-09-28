@@ -11,7 +11,7 @@ bucket, audit trail and CI roles are out of reach. Inventory: [`../cmdb.yml`](..
 |---|---|
 | What | Cross-account role, workspace, Unity Catalog access, `finance` catalog, groups, guardrails |
 | Order | Bootstrap network → workspace → Unity Catalog (enabling too early fails with a clear message) |
-| Auth | Service principal `terraform-platform`, OAuth, 14-day secret (target: OIDC, no secret) |
+| Auth | `terraform-platform` (this stack), OAuth, 14-day secret (target: OIDC); data jobs use the deployer and runner ([identities.tf](identities.tf)) |
 | Deploy | PR → merge → **Actions → Deploy Databricks Workspace** → type `apply` |
 | Stories | [2.3](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.3-workspace-as-code.md) · [2.4](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.4-unity-catalog-on-our-s3.md) · [2.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/2.5-guardrails.md) · [3.2](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/3.2-catalog-and-bundle-deploy.md) |
 
@@ -34,8 +34,10 @@ bucket, audit trail and CI roles are out of reach. Inventory: [`../cmdb.yml`](..
 - The cross-account role can only launch instances in **our** VPC and security group.
 - Clusters: max 2 small workers, spot, no Photon; interactive ones stop after 10–30 min.
   Admins can bypass the policy, so for the owner it's a default; the budget alerts still apply.
-- Known gap: one service principal does platform, deploy and run-as duties
-  ([story 4.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/4.5-split-service-principals.md)).
+- Three identities, one duty each ([story 4.5](https://github.com/kheuchi/retail-finance-platform-control-plane/blob/main/docs/stories/4.5-split-service-principals.md)):
+  `terraform-platform` runs Terraform, `finance-data-deployer` deploys the data bundle,
+  `finance-pipeline-runner` is what jobs run as. The runner cannot grant or administer;
+  grants are audited in CI by `scripts/access_audit.py`.
 
 ## Gotchas (provider 1.134)
 
