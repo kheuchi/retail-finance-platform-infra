@@ -16,7 +16,7 @@
 #   toolchain          versions and local gotchas
 # ======================================================================
 
-updated: "2026-09-27"
+updated: "2026-09-28"
 region: eu-central-1
 
 # ──────────── stacks ────────────
@@ -95,6 +95,7 @@ stacks:
       - "finance catalog (ISOLATED, storage in governed bucket /catalogs/finance) with schemas raw, bronze, silver, gold, ops; managed volumes raw.landing and ops.artifacts (job wheels); force_destroy on (synthetic data)"
       - "groups finance-data-engineers (ALL_PRIVILEGES on catalog; owner is member) and finance-analysts (USE_CATALOG + gold USE_SCHEMA/SELECT only)"
       - "databricks_budget.trial: whole account, monthly, list-price USD alerts at 100/200/300/380 to the budget email"
+      - "identities (story 4.5): finance-data-deployer (workspace user; USE_CATALOG; ops USE_SCHEMA/READ/WRITE_VOLUME; Service Principal User on the runner) and finance-pipeline-runner (workspace user; USE_CATALOG; raw/bronze/silver/gold/ops USE_SCHEMA, SELECT, MODIFY, CREATE_TABLE, READ/WRITE_VOLUME); both workspace_access only, cluster policies via users group. terraform-platform: Terraform only"
     notes:
       - Workspace auto-attached to metastore_aws_eu_central_1 (one metastore per region).
       - "Front-end access is public (UI over internet, Databricks auth); back-end is PrivateLink only."
@@ -133,7 +134,7 @@ iam:
 # ──────────── ci_cd ────────────
 ci_cd:
   workflows:
-    ci.yml: [fmt, validate both stacks, bash -n, Checkov both stacks, AWS plan both stacks on main, semantic-release]
+    ci.yml: [fmt, validate both stacks, bash -n, access-audit unit tests, Checkov both stacks, AWS plan both stacks on main, access audit on main (scripts/access_audit.py as terraform-platform), semantic-release]
     deploy-bootstrap.yml: manual dispatch from main, type "apply", aws-bootstrap environment, plan -> apply saved plan
     deploy-databricks.yml: same gate; shares concurrency group with bootstrap (never both at once)
   branch_protection_main: [PR required, Terraform checks + Checkov required, up to date, linear history, no force push, no delete, applies to admins]
@@ -284,6 +285,12 @@ incidents:
     cause: "endpoint security group admitted only 443 and 6666; control-plane API ports 8443-8451 were rejected (VPC flow logs: >1,000 REJECTs to the workspace endpoint on 8443-8449)"
     fix: "ingress 8443-8451 from the workspace SG on the endpoint SG. Root cause found in flow logs, not guessed"
     story: "3.3"
+
+  - date: "2026-09-28"
+    what: "Gold refused when run as finance-pipeline-runner: 'finance-analysts lacks USE SCHEMA/SELECT on gold'"
+    cause: "only owners and admins see other principals' grants; the runner saw only its own"
+    fix: "access allow-list moved to the platform: scripts/access_audit.py in post-merge CI as terraform-platform over catalog, schemas, every table and volume (38 securables, 0 violations on first run); the Gold job enforces it only when it can see others' grants"
+    story: "4.5"
 
 # ──────────── toolchain ────────────
 toolchain:
