@@ -5,6 +5,7 @@
 #   finance.silver  typed, deduplicated, validated
 #   finance.gold    certified finance tables: what models and the agent read
 #   finance.ops     build artifacts (job wheels), kept apart from data
+#   finance.ml      ML models registered in Unity Catalog
 #
 # Access goes to account-level groups, never to named users: that is the
 # enterprise pattern, and it keeps email addresses out of public plan logs.
@@ -22,6 +23,7 @@ locals {
     silver = "Typed, deduplicated and validated. Reconciliation checks run here."
     gold   = "Certified finance tables. The only schema analysts, models and the agent read."
     ops    = "Operational artifacts such as job wheels. Not data."
+    ml     = "ML models registered in Unity Catalog (MLflow). Written by the pipeline; analysts read model scores in gold."
   }
 }
 

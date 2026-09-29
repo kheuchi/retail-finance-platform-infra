@@ -85,7 +85,7 @@ locals {
   # What the runner needs in every finance schema: read, write, create tables, and use
   # the volumes (landing files, Auto Loader checkpoints, job wheels).
   runner_schema_privileges = ["USE_SCHEMA", "SELECT", "MODIFY", "CREATE_TABLE", "READ_VOLUME", "WRITE_VOLUME"]
-  pipeline_schemas         = local.catalog_count == 1 ? toset(["raw", "bronze", "silver", "ops"]) : toset([])
+  pipeline_schemas         = local.catalog_count == 1 ? toset(["raw", "bronze", "silver", "ops", "ml"]) : toset([])
 }
 
 # Gold has its own grants resource (catalog.tf), shared with the analysts.
@@ -97,7 +97,7 @@ resource "databricks_grants" "pipeline_schemas" {
 
   grant {
     principal  = databricks_service_principal.runner[0].application_id
-    privileges = local.runner_schema_privileges
+    privileges = each.key == "ml" ? concat(local.runner_schema_privileges, ["CREATE_MODEL", "EXECUTE"]) : local.runner_schema_privileges
   }
 
   # The deployer only uploads job wheels to ops.artifacts.
