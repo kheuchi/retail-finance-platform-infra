@@ -301,4 +301,3 @@ toolchain:
     - Terraform cannot read the aws login session; export with 'aws configure export-credentials --format env'
     - AWS CLI default region is eu-north-1; pass --region eu-central-1 or fix the profile
     - Databricks locally reads ~/.databrickscfg (outside the repo, chmod 600)
-    - Azure CLI cleared of employer tenant 2026-09-22; gcloud still holds 3 employer service accounts
