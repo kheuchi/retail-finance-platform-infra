@@ -44,7 +44,7 @@ class AgentPlatform(unittest.TestCase):
 
     def test_intended_agent_setup_passes(self):
         self.assertEqual(self.v("schema", "finance.agent", {self.A: ["USE_SCHEMA", "EXECUTE"], self.N: ["USE_SCHEMA", "EXECUTE"], "finance-controllers": ["USE_SCHEMA"]}), [])
-        self.assertEqual(self.v("table", "finance.gold.budget_variance", {self.A: ["SELECT"], self.N: ["SELECT"]}), [])
+        self.assertEqual(len(self.v("table", "finance.gold.budget_variance", {self.A: ["SELECT"]})), 1)  # functions only
         self.assertEqual(self.v("table", "finance.agent.approvals", {"finance-controllers": ["SELECT", "MODIFY"], self.N: ["SELECT"]}), [])
         self.assertEqual(self.v("table", "finance.gold.close_commentary", {self.N: ["SELECT", "MODIFY"]}), [])
 

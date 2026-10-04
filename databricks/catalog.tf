@@ -170,12 +170,7 @@ resource "databricks_grants" "gold" {
     privileges = local.runner_schema_privileges
   }
 
-  # The agent and the channel tools only enter Gold; table grants are in agent.tf.
-  grant {
-    principal  = databricks_service_principal.agent[0].application_id
-    privileges = ["USE_SCHEMA"]
-  }
-
+  # The channel tools publish approved commentary to gold.close_commentary (agent.tf).
   grant {
     principal  = databricks_service_principal.notifier[0].application_id
     privileges = ["USE_SCHEMA"]

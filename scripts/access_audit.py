@@ -28,7 +28,6 @@ CATALOG = "finance"
 BELOW_GOLD = ("raw", "bronze", "silver", "ops", "ml", "agent")
 ANALYSTS, BROAD = "finance-analysts", ("account users", "users")
 CONTROLLERS = "finance-controllers"
-AGENT_GOLD_TABLES = {"daily_revenue", "budget_variance", "margin", "margin_alerts", "recon_exceptions", "revenue_forecast"}
 
 
 def agent_platform_allowed(kind: str, securable: str, name: str) -> set[str]:
@@ -41,10 +40,9 @@ def agent_platform_allowed(kind: str, securable: str, name: str) -> set[str]:
     if securable == "schema":
         if schema == "agent":
             return {"USE_SCHEMA"} if kind == "controllers" else {"USE_SCHEMA", "EXECUTE"}
-        return {"USE_SCHEMA"} if schema == "gold" and kind != "controllers" else set()
+        return {"USE_SCHEMA"} if schema == "gold" and kind == "notifier" else set()
     if securable == "table":
-        if schema == "gold" and table in AGENT_GOLD_TABLES and kind != "controllers":
-            return {"SELECT"}
+        # The agent reads only through its functions (owner's rights): no table grants at all.
         if kind == "notifier":
             return {"agent.drafts": {"SELECT", "MODIFY"}, "agent.approvals": {"SELECT"}, "gold.close_commentary": {"SELECT", "MODIFY"}}.get(f"{schema}.{table}", set())
         if kind == "controllers":
