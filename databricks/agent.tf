@@ -68,19 +68,21 @@ resource "databricks_entitlements" "notifier" {
   depends_on = [databricks_mws_permission_assignment.notifier]
 }
 
-resource "databricks_group" "controllers" {
+# Account level, like the other groups: Unity Catalog grants only resolve account groups.
+resource "databricks_group" "controllers_account" {
   count    = local.agent_count
-  provider = databricks.workspace
+  provider = databricks.account
 
   display_name = "finance-controllers"
 }
 
-# The owner plays the financial controller in this portfolio.
-resource "databricks_group_member" "controller_owner" {
+# The owner plays the financial controller in this portfolio (accepted: the same person is
+# also an admin; in production approvers are not administrators).
+resource "databricks_group_member" "controller_owner_account" {
   count    = local.admin_user_count == 1 && local.agent_count == 1 ? 1 : 0
-  provider = databricks.workspace
+  provider = databricks.account
 
-  group_id  = databricks_group.controllers[0].id
+  group_id  = databricks_group.controllers_account[0].id
   member_id = data.databricks_user.workspace_admin[0].id
 }
 
@@ -266,7 +268,7 @@ resource "databricks_grants" "agent_schema" {
   }
 
   grant {
-    principal  = databricks_group.controllers[0].display_name
+    principal  = databricks_group.controllers_account[0].display_name
     privileges = ["USE_SCHEMA"]
   }
 }
@@ -300,7 +302,7 @@ resource "databricks_grants" "agent_drafts" {
   }
 
   grant {
-    principal  = databricks_group.controllers[0].display_name
+    principal  = databricks_group.controllers_account[0].display_name
     privileges = ["SELECT"]
   }
 }
@@ -312,7 +314,7 @@ resource "databricks_grants" "agent_approvals" {
   table = databricks_sql_table.agent_approvals[0].id
 
   grant {
-    principal  = databricks_group.controllers[0].display_name
+    principal  = databricks_group.controllers_account[0].display_name
     privileges = ["SELECT", "MODIFY"]
   }
 

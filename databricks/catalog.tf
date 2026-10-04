@@ -148,7 +148,7 @@ resource "databricks_grants" "catalog" {
   }
 
   grant {
-    principal  = databricks_group.controllers[0].display_name
+    principal  = databricks_group.controllers_account[0].display_name
     privileges = ["USE_CATALOG"]
   }
 }
