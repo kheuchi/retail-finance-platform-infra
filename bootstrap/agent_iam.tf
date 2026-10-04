@@ -57,30 +57,46 @@ data "aws_iam_policy_document" "github_agent_deploy" {
     resources = ["*"]
   }
 
-  # New endpoints and security groups: only when the request tags them as ours.
+  # The agent stack tags everything it creates Component=agent (default_tags). Creation is
+  # allowed only with that tag; changes and deletes only on resources carrying it, so this role
+  # cannot delete or modify the Databricks network that bootstrap/ owns.
   statement {
-    sid       = "CreateTaggedNetwork"
+    sid       = "CreateAgentNetwork"
     effect    = "Allow"
     actions   = ["ec2:CreateVpcEndpoint", "ec2:CreateSecurityGroup", "ec2:CreateTags", "ec2:AuthorizeSecurityGroupEgress", "ec2:AuthorizeSecurityGroupIngress"]
     resources = ["*"]
     condition {
       test     = "StringEquals"
-      variable = "aws:RequestTag/Application"
-      values   = [var.project_name]
+      variable = "aws:RequestTag/Component"
+      values   = ["agent"]
     }
   }
 
-  # Existing project resources (VPC, subnets, endpoint SG) and the ones created above.
   statement {
-    sid    = "ManageTaggedNetwork"
+    sid    = "ManageAgentNetwork"
     effect = "Allow"
     actions = [
-      "ec2:CreateVpcEndpoint", "ec2:DeleteVpcEndpoints", "ec2:ModifyVpcEndpoint",
-      "ec2:DeleteSecurityGroup", "ec2:AuthorizeSecurityGroupEgress", "ec2:AuthorizeSecurityGroupIngress",
+      "ec2:DeleteVpcEndpoints", "ec2:ModifyVpcEndpoint", "ec2:DeleteSecurityGroup",
+      "ec2:AuthorizeSecurityGroupEgress", "ec2:AuthorizeSecurityGroupIngress",
       "ec2:RevokeSecurityGroupEgress", "ec2:RevokeSecurityGroupIngress", "ec2:ModifySecurityGroupRules",
       "ec2:UpdateSecurityGroupRuleDescriptionsEgress", "ec2:UpdateSecurityGroupRuleDescriptionsIngress",
       "ec2:CreateTags", "ec2:DeleteTags"
     ]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/Component"
+      values   = ["agent"]
+    }
+  }
+
+  # Using the foundation: place endpoints and a security group in the existing VPC and
+  # subnets, and add or remove the agent's own ingress rule on the endpoint security group.
+  # No delete or modify of foundation resources.
+  statement {
+    sid       = "UseFoundationNetwork"
+    effect    = "Allow"
+    actions   = ["ec2:CreateVpcEndpoint", "ec2:CreateSecurityGroup", "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress"]
     resources = ["*"]
     condition {
       test     = "StringEquals"
@@ -104,7 +120,7 @@ data "aws_iam_policy_document" "github_agent_deploy" {
       "ecr:TagResource", "ecr:UntagResource", "ecr:PutLifecyclePolicy", "ecr:GetLifecyclePolicy",
       "ecr:DeleteLifecyclePolicy", "ecr:PutImageScanningConfiguration", "ecr:PutImageTagMutability",
       "ecr:SetRepositoryPolicy", "ecr:GetRepositoryPolicy", "ecr:DeleteRepositoryPolicy", "ecr:DescribeImages",
-      "ecr:BatchDeleteImage", "ecr:ListImages"
+      "ecr:BatchDeleteImage", "ecr:ListImages", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"
     ]
     resources = ["arn:${format(local.account_region_arn, "ecr")}:repository/${local.agent_ecr_repository}"]
   }
@@ -138,6 +154,11 @@ data "aws_iam_policy_document" "github_agent_deploy" {
     effect    = "Allow"
     actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/*bedrock-agentcore.amazonaws.com/*"]
+    condition {
+      test     = "StringLike"
+      variable = "iam:AWSServiceName"
+      values   = ["*bedrock-agentcore.amazonaws.com"]
+    }
   }
 
   statement {
