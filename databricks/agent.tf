@@ -52,8 +52,9 @@ resource "databricks_entitlements" "agent" {
   count    = local.agent_count
   provider = databricks.workspace
 
-  service_principal_id = databricks_service_principal.agent[0].id
-  workspace_access     = true
+  service_principal_id  = databricks_service_principal.agent[0].id
+  workspace_access      = true
+  databricks_sql_access = true # the SQL Statement API and managed MCP refuse principals without it
 
   depends_on = [databricks_mws_permission_assignment.agent]
 }
@@ -62,8 +63,9 @@ resource "databricks_entitlements" "notifier" {
   count    = local.agent_count
   provider = databricks.workspace
 
-  service_principal_id = databricks_service_principal.notifier[0].id
-  workspace_access     = true
+  service_principal_id  = databricks_service_principal.notifier[0].id
+  workspace_access      = true
+  databricks_sql_access = true # the SQL Statement API and managed MCP refuse principals without it
 
   depends_on = [databricks_mws_permission_assignment.notifier]
 }
