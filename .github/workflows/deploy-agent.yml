@@ -1,0 +1,70 @@
+name: Deploy agent platform
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type apply to deploy the reviewed main branch
+        required: true
+        type: string
+      agent_image_tag:
+        description: Agent image tag in ECR (empty = no runtime yet)
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: deploy-agent
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Plan and apply agent/
+    if: github.ref == 'refs/heads/main' && inputs.confirmation == 'apply'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: aws-bootstrap
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out main
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@cabfdba3510de1431bac9dba27511d97497fc100 # v5
+        with:
+          role-to-assume: ${{ vars.AWS_AGENT_DEPLOY_ROLE_ARN }}
+          role-session-name: github-terraform-agent
+          aws-region: eu-central-1
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+        with:
+          terraform_version: 1.14.6
+          terraform_wrapper: false
+      - name: Initialize remote backend
+        working-directory: agent
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          terraform init -input=false \
+            -backend-config="bucket=retail-finance-platform-tfstate-${account_id}-eu-central-1" \
+            -backend-config="key=agent/terraform.tfstate" \
+            -backend-config="region=eu-central-1" \
+            -backend-config="use_lockfile=true" \
+            -backend-config="encrypt=true"
+      - name: Create reviewed plan
+        working-directory: agent
+        env:
+          TF_VAR_alert_email: ${{ secrets.TF_VAR_alert_email }}
+          TF_VAR_databricks_workspace_url: ${{ vars.DATABRICKS_WORKSPACE_URL }}
+          TF_VAR_agent_warehouse_id: ${{ vars.AGENT_WAREHOUSE_ID }}
+          TF_VAR_agent_model_id: ${{ vars.AGENT_MODEL_ID || 'eu.anthropic.claude-sonnet-5' }}
+          IMAGE_TAG: ${{ inputs.agent_image_tag }}
+        run: |
+          if [ -n "$IMAGE_TAG" ]; then export TF_VAR_agent_image_tag="$IMAGE_TAG"; fi
+          terraform plan -input=false -lock-timeout=5m -out=agent.tfplan
+      - name: Apply exact saved plan
+        working-directory: agent
+        run: terraform apply -input=false agent.tfplan

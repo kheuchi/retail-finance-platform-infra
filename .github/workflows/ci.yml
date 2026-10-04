@@ -40,6 +40,14 @@ jobs:
       - name: Validate databricks stack
         working-directory: databricks
         run: terraform validate
+      - name: Initialize agent stack without remote backend
+        working-directory: agent
+        run: terraform init -backend=false -input=false
+      - name: Validate agent stack
+        working-directory: agent
+        run: terraform validate
+      - name: Test channel tools figure check
+        run: python3 -m unittest agent/lambda/test_channels.py
       - name: Validate shell syntax
         run: bash -n scripts/*.sh
       - name: Test access audit allow-list
@@ -62,7 +70,7 @@ jobs:
       - name: Install pinned Checkov
         run: python -m pip install --disable-pip-version-check --requirement requirements-ci.txt
       - name: Scan Terraform
-        run: checkov --directory bootstrap --directory databricks --framework terraform --compact --quiet
+        run: checkov --directory bootstrap --directory databricks --directory agent --framework terraform --compact --quiet
 
   cloud-plan:
     name: AWS Terraform plan
@@ -118,13 +126,25 @@ jobs:
           TF_VAR_workspace_admin_user: ${{ vars.DATABRICKS_WORKSPACE_ADMIN }}
           TF_VAR_budget_alert_email: ${{ secrets.TF_VAR_budget_alert_email }}
         run: terraform plan -input=false -lock-timeout=5m -no-color
+      - name: Initialize agent stack backend
+        working-directory: agent
+        run: |
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          terraform init -input=false             -backend-config="bucket=retail-finance-platform-tfstate-${account_id}-eu-central-1"             -backend-config="key=agent/terraform.tfstate"             -backend-config="region=eu-central-1"             -backend-config="use_lockfile=true"             -backend-config="encrypt=true"
+      - name: Plan agent stack
+        working-directory: agent
+        env:
+          TF_VAR_alert_email: ${{ secrets.TF_VAR_alert_email }}
+          TF_VAR_databricks_workspace_url: ${{ vars.DATABRICKS_WORKSPACE_URL }}
+          TF_VAR_agent_warehouse_id: ${{ vars.AGENT_WAREHOUSE_ID }}
+        run: terraform plan -input=false -lock-timeout=5m -no-color
       - name: Access audit (grants on every securable of the finance catalog)
         working-directory: databricks
         env:
           DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
-          DATABRICKS_HOST="$(terraform output -raw workspace_url)"           RUNNER_ID="$(terraform output -raw runner_application_id)"           DEPLOYER_ID="$(terraform output -raw deployer_application_id)"           python3 ../scripts/access_audit.py
+          DATABRICKS_HOST="$(terraform output -raw workspace_url)"           RUNNER_ID="$(terraform output -raw runner_application_id)"           DEPLOYER_ID="$(terraform output -raw deployer_application_id)"           AGENT_ID="$(terraform output -raw agent_application_id 2>/dev/null || true)"           NOTIFIER_ID="$(terraform output -raw notifier_application_id 2>/dev/null || true)"           python3 ../scripts/access_audit.py
 
   release:
     name: Semantic release
