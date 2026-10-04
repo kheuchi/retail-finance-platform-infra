@@ -12,8 +12,6 @@
 
 locals {
   agent_count = local.catalog_count
-  # The Gold tables the agent's tools read: store level or above. Never fraud_scores or refunds (cashier level, R-12).
-  agent_gold_tables = local.agent_count == 1 ? toset(["daily_revenue", "budget_variance", "margin", "margin_alerts", "recon_exceptions", "revenue_forecast"]) : toset([])
 }
 
 resource "databricks_service_principal" "agent" {
@@ -275,22 +273,10 @@ resource "databricks_grants" "agent_schema" {
   }
 }
 
-resource "databricks_grants" "agent_gold_tables" {
-  for_each = local.agent_gold_tables
-  provider = databricks.workspace
-
-  table = "${databricks_catalog.finance[0].name}.gold.${each.key}"
-
-  grant {
-    principal  = databricks_service_principal.agent[0].application_id
-    privileges = ["SELECT"]
-  }
-
-  grant {
-    principal  = databricks_service_principal.notifier[0].application_id
-    privileges = ["SELECT"]
-  }
-}
+# No table grants on Gold for the agent or the notifier: Unity Catalog runs the tool
+# functions with their owner's rights (proven 2026-10-04: cashier_case_count works for the
+# notifier, a direct SELECT on gold.fraud_scores is refused). They see only what the functions
+# return; the R-12 boundary is the review of sql/agent_tools.sql in the data repo.
 
 resource "databricks_grants" "agent_drafts" {
   count    = local.agent_count
