@@ -34,4 +34,6 @@ resource "aws_bedrockagentcore_agent_runtime" "month_end" {
     GATEWAY_URL           = aws_bedrockagentcore_gateway.channels.gateway_url
     MODEL_ID              = var.agent_model_id
   }
+
+  depends_on = [aws_iam_role_policy.runtime, aws_vpc_endpoint.agent]
 }

@@ -1,4 +1,5 @@
 resource "aws_ecr_repository" "agent" {
+  #checkov:skip=CKV_AWS_136:AES256 (AWS-managed) is sufficient for an image with no secrets; KMS adds cost and key management for no gain here.
   name                 = local.repository
   image_tag_mutability = "IMMUTABLE"
   force_delete         = true # teardown: the images are rebuilt from Git

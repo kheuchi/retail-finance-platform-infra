@@ -39,8 +39,6 @@ resource "aws_lambda_function" "channels" {
   memory_size      = 256
   architectures    = ["arm64"]
 
-  reserved_concurrent_executions = 5
-
   tracing_config {
     mode = "Active"
   }
@@ -55,7 +53,8 @@ resource "aws_lambda_function" "channels" {
     }
   }
 
-  depends_on = [aws_cloudwatch_log_group.channels]
+  # The role must hold its policy (X-Ray, logs) before Lambda validates it.
+  depends_on = [aws_cloudwatch_log_group.channels, aws_iam_role_policy.channels]
 }
 
 resource "aws_bedrockagentcore_gateway" "channels" {
@@ -74,6 +73,8 @@ resource "aws_bedrockagentcore_gateway_target" "channels" {
   credential_provider_configuration {
     gateway_iam_role {}
   }
+
+  depends_on = [aws_iam_role_policy.gateway]
 
   target_configuration {
     mcp {
