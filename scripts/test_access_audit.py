@@ -33,5 +33,28 @@ class AllowList(unittest.TestCase):
         self.assertEqual(len(self.v("schema", "finance.gold", {"finance-analysts": ["MODIFY"]})), 1)
 
 
+
+class AgentPlatform(unittest.TestCase):
+    """Story 7.1: the agent reads five Gold tables through functions; the notifier records and publishes; controllers approve."""
+
+    A, N = "agent-id", "notifier-id"
+
+    def v(self, securable, name, grants):
+        return violations(securable, name, {k: set(p) for k, p in grants.items()}, R, D, self.A, self.N)
+
+    def test_intended_agent_setup_passes(self):
+        self.assertEqual(self.v("schema", "finance.agent", {self.A: ["USE_SCHEMA", "EXECUTE"], self.N: ["USE_SCHEMA", "EXECUTE"], "finance-controllers": ["USE_SCHEMA"]}), [])
+        self.assertEqual(self.v("table", "finance.gold.budget_variance", {self.A: ["SELECT"], self.N: ["SELECT"]}), [])
+        self.assertEqual(self.v("table", "finance.agent.approvals", {"finance-controllers": ["SELECT", "MODIFY"], self.N: ["SELECT"]}), [])
+        self.assertEqual(self.v("table", "finance.gold.close_commentary", {self.N: ["SELECT", "MODIFY"]}), [])
+
+    def test_agent_never_reads_cashier_scores_or_silver(self):
+        self.assertEqual(len(self.v("table", "finance.gold.fraud_scores", {self.A: ["SELECT"]})), 1)
+        self.assertEqual(len(self.v("schema", "finance.silver", {self.A: ["USE_SCHEMA"]})), 1)
+
+    def test_only_controllers_write_approvals_and_agent_writes_nothing(self):
+        self.assertEqual(len(self.v("table", "finance.agent.approvals", {self.N: ["MODIFY"]})), 1)
+        self.assertEqual(len(self.v("table", "finance.agent.drafts", {self.A: ["MODIFY"]})), 1)
+
 if __name__ == "__main__":
     unittest.main()

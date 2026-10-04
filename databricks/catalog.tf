@@ -24,6 +24,7 @@ locals {
     gold   = "Certified finance tables. The only schema analysts, models and the agent read."
     ops    = "Operational artifacts such as job wheels. Not data."
     ml     = "ML models registered in Unity Catalog (MLflow). Written by the pipeline; analysts read model scores in gold."
+    agent  = "AI agent: read-only tool functions over Gold, drafts and approvals (story 7.1). No finance data stored here."
   }
 }
 
@@ -134,6 +135,22 @@ resource "databricks_grants" "catalog" {
     principal  = databricks_service_principal.deployer[0].application_id
     privileges = ["USE_CATALOG"]
   }
+
+  # Agent platform (agent.tf): into the catalog, then named grants only.
+  grant {
+    principal  = databricks_service_principal.agent[0].application_id
+    privileges = ["USE_CATALOG"]
+  }
+
+  grant {
+    principal  = databricks_service_principal.notifier[0].application_id
+    privileges = ["USE_CATALOG"]
+  }
+
+  grant {
+    principal  = databricks_group.controllers[0].display_name
+    privileges = ["USE_CATALOG"]
+  }
 }
 
 # Analysts read Gold and nothing else: no raw data, no half-cleaned data.
@@ -151,5 +168,16 @@ resource "databricks_grants" "gold" {
   grant {
     principal  = databricks_service_principal.runner[0].application_id
     privileges = local.runner_schema_privileges
+  }
+
+  # The agent and the channel tools only enter Gold; table grants are in agent.tf.
+  grant {
+    principal  = databricks_service_principal.agent[0].application_id
+    privileges = ["USE_SCHEMA"]
+  }
+
+  grant {
+    principal  = databricks_service_principal.notifier[0].application_id
+    privileges = ["USE_SCHEMA"]
   }
 }

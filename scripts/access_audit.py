@@ -25,11 +25,34 @@ import urllib.parse
 import urllib.request
 
 CATALOG = "finance"
-BELOW_GOLD = ("raw", "bronze", "silver", "ops", "ml")
+BELOW_GOLD = ("raw", "bronze", "silver", "ops", "ml", "agent")
 ANALYSTS, BROAD = "finance-analysts", ("account users", "users")
+CONTROLLERS = "finance-controllers"
+AGENT_GOLD_TABLES = {"daily_revenue", "budget_variance", "margin", "margin_alerts", "recon_exceptions", "revenue_forecast"}
 
 
-def violations(securable: str, name: str, grants: dict[str, set[str]], runner: str, deployer: str) -> list[str]:
+def agent_platform_allowed(kind: str, securable: str, name: str) -> set[str]:
+    """What the agent platform's principals may hold (story 7.1). ``kind`` is agent, notifier or controllers."""
+    parts = name.split(".")
+    schema = parts[1] if len(parts) > 1 else None
+    table = parts[2] if len(parts) > 2 else None
+    if securable == "catalog":
+        return {"USE_CATALOG"}
+    if securable == "schema":
+        if schema == "agent":
+            return {"USE_SCHEMA"} if kind == "controllers" else {"USE_SCHEMA", "EXECUTE"}
+        return {"USE_SCHEMA"} if schema == "gold" and kind != "controllers" else set()
+    if securable == "table":
+        if schema == "gold" and table in AGENT_GOLD_TABLES and kind != "controllers":
+            return {"SELECT"}
+        if kind == "notifier":
+            return {"agent.drafts": {"SELECT", "MODIFY"}, "agent.approvals": {"SELECT"}, "gold.close_commentary": {"SELECT", "MODIFY"}}.get(f"{schema}.{table}", set())
+        if kind == "controllers":
+            return {"agent.drafts": {"SELECT"}, "agent.approvals": {"SELECT", "MODIFY"}}.get(f"{schema}.{table}", set())
+    return set()
+
+
+def violations(securable: str, name: str, grants: dict[str, set[str]], runner: str, deployer: str, agent: str = "", notifier: str = "") -> list[str]:
     """Pure allow-list check for one securable. ``securable`` is catalog, schema, table or volume."""
     schema = name.split(".")[1] if name.count(".") >= 1 else None
     out = []
@@ -47,6 +70,9 @@ def violations(securable: str, name: str, grants: dict[str, set[str]], runner: s
             allowed = {"USE_CATALOG"} if securable == "catalog" else set()
             if schema == "ops" and securable in ("schema", "volume"):
                 allowed = {"USE_SCHEMA", "READ_VOLUME", "WRITE_VOLUME"}
+        elif principal in {agent, notifier, CONTROLLERS} - {""}:
+            kind = "agent" if principal == agent else "notifier" if principal == notifier else "controllers"
+            allowed = agent_platform_allowed(kind, securable, name)
         elif principal == runner:
             extra = privs & {"MANAGE", "ALL_PRIVILEGES"}
             if extra:
@@ -86,6 +112,7 @@ def main() -> int:
     env = os.environ
     c = Client(env["DATABRICKS_HOST"], env["DATABRICKS_CLIENT_ID"], env["DATABRICKS_CLIENT_SECRET"])
     runner, deployer = env["RUNNER_ID"], env["DEPLOYER_ID"]
+    agent, notifier = env.get("AGENT_ID", ""), env.get("NOTIFIER_ID", "")
 
     found, checked = [], 0
     targets = [("catalog", CATALOG)] + [("schema", f"{CATALOG}.{s}") for s in (*BELOW_GOLD, "gold")]
@@ -93,7 +120,7 @@ def main() -> int:
         targets += [("table", t["full_name"]) for t in c.get("/api/2.1/unity-catalog/tables", catalog_name=CATALOG, schema_name=s).get("tables", [])]
         targets += [("volume", v["full_name"]) for v in c.get("/api/2.1/unity-catalog/volumes", catalog_name=CATALOG, schema_name=s).get("volumes", [])]
     for securable, name in targets:
-        found += violations(securable, name, c.grants(securable, name), runner, deployer)
+        found += violations(securable, name, c.grants(securable, name), runner, deployer, agent, notifier)
         checked += 1
 
     print(f"access audit: {checked} securables checked, {len(found)} violation(s)")

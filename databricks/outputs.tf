@@ -32,3 +32,18 @@ output "runner_application_id" {
   description = "Application ID of finance-pipeline-runner (the data jobs' run_as). Not a secret."
   value       = try(databricks_service_principal.runner[0].application_id, null)
 }
+
+output "agent_application_id" {
+  description = "Application ID of finance-month-end-agent (not a secret)."
+  value       = try(databricks_service_principal.agent[0].application_id, null)
+}
+
+output "notifier_application_id" {
+  description = "Application ID of finance-close-notifier, the channel tools' identity (not a secret)."
+  value       = try(databricks_service_principal.notifier[0].application_id, null)
+}
+
+output "agent_warehouse_id" {
+  description = "SQL warehouse used by the channel tools."
+  value       = try(databricks_sql_endpoint.agent[0].id, null)
+}
