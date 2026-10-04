@@ -66,3 +66,18 @@ output "aws_region" {
   description = "Region every regional resource in this project lives in."
   value       = var.aws_region
 }
+
+output "agent_deploy_role_arn" {
+  description = "Role the agent/ stack deploy workflow assumes."
+  value       = aws_iam_role.github_agent_deploy.arn
+}
+
+output "agent_ci_role_arn" {
+  description = "Role the data repo assumes to push the agent image and invoke the runtime."
+  value       = aws_iam_role.github_agent_ci.arn
+}
+
+output "agent_ecr_repository" {
+  description = "Name of the agent image repository (created by the agent/ stack)."
+  value       = local.agent_ecr_repository
+}

@@ -173,3 +173,15 @@ variable "databricks_relay_vpce_service" {
   type        = string
   default     = "com.amazonaws.vpce.eu-central-1.vpce-svc-08e5dfca9572c85c4"
 }
+
+variable "data_repository" {
+  description = "Data products repository whose main branch may push the agent image (story 7.1)."
+  type        = string
+  default     = "retail-finance-data-products"
+}
+
+variable "data_repository_id" {
+  description = "Immutable numeric ID of the data products repository, pinned in its OIDC trust."
+  type        = string
+  default     = "1387632226"
+}
