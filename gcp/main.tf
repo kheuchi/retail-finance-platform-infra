@@ -124,9 +124,10 @@ resource "google_project_iam_member" "deployer" {
 }
 
 resource "google_storage_bucket_iam_member" "deployer_staging" {
-  bucket = google_storage_bucket.staging.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.deployer.email}"
+  for_each = toset(["roles/storage.objectAdmin", "roles/storage.legacyBucketReader"]) # objects + bucket metadata (the SDK reads the bucket first)
+  bucket   = google_storage_bucket.staging.name
+  role     = each.key
+  member   = "serviceAccount:${google_service_account.deployer.email}"
 }
 
 resource "google_service_account_iam_member" "deployer_acts_as_runtime" {
