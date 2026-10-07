@@ -46,6 +46,12 @@ jobs:
       - name: Validate agent stack
         working-directory: agent
         run: terraform validate
+      - name: Initialize gcp stack without remote backend
+        working-directory: gcp
+        run: terraform init -backend=false -input=false
+      - name: Validate gcp stack
+        working-directory: gcp
+        run: terraform validate
       - name: Test channel tools figure check
         run: python3 -m unittest agent/lambda/test_channels.py
       - name: Validate shell syntax
@@ -70,7 +76,7 @@ jobs:
       - name: Install pinned Checkov
         run: python -m pip install --disable-pip-version-check --requirement requirements-ci.txt
       - name: Scan Terraform
-        run: checkov --directory bootstrap --directory databricks --directory agent --framework terraform --compact --quiet
+        run: checkov --directory bootstrap --directory databricks --directory agent --directory gcp --framework terraform --compact --quiet
 
   cloud-plan:
     name: AWS Terraform plan

@@ -58,3 +58,9 @@ variable "agent_model_id" {
   type        = string
   default     = "eu.anthropic.claude-sonnet-5"
 }
+
+variable "gcp_agent_sa_unique_id" {
+  description = "Numeric unique ID of the Google service account the agent runs as on Agent Runtime (gcp/ output). Null until gcp/ is applied (ADR-006 deviation, D-032)."
+  type        = string
+  default     = null
+}
