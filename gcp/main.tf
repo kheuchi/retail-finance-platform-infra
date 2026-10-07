@@ -95,11 +95,13 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_provider_id = "github"
   display_name                       = "GitHub OIDC"
   attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.repository" = "assertion.repository"
-    "attribute.ref"        = "assertion.ref"
+    "google.subject"          = "assertion.sub"
+    "attribute.repository"    = "assertion.repository"
+    "attribute.ref"           = "assertion.ref"
+    "attribute.repository_id" = "assertion.repository_id"
   }
-  attribute_condition = "assertion.repository == \"${var.data_repository}\" && assertion.ref == \"refs/heads/main\""
+  # Pinned to the immutable repository ID; pull_request_target runs (which carry main's ref) are excluded.
+  attribute_condition = "assertion.repository_id == \"${var.data_repository_id}\" && assertion.ref == \"refs/heads/main\" && assertion.event_name != \"pull_request_target\""
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
   }

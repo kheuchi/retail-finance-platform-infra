@@ -15,3 +15,9 @@ variable "data_repository" {
   type        = string
   default     = "kheuchi/retail-finance-data-products"
 }
+
+variable "data_repository_id" {
+  description = "Immutable numeric ID of the data repository (pinned in the federation condition)."
+  type        = string
+  default     = "1387632226"
+}
