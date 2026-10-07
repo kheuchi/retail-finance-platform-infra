@@ -6,6 +6,8 @@
 #   finance-agent-deployer    used by the data repo's main branch through Workload Identity
 #                             Federation (no key): deploys the agent, acts as the runtime SA
 #
+# Agent Runtime's own service agent only exists after first use: no grant to it here.
+#
 # Applied by the owner from the workstation (bootstrap-style, like bootstrap/ on AWS); the
 # data repo deploys workloads through the federation created here.
 
@@ -20,7 +22,6 @@ locals {
     "logging.googleapis.com",
     "cloudresourcemanager.googleapis.com",
   ])
-  reasoning_engine_service_agent = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
 }
 
 resource "google_project_service" "this" {
@@ -43,14 +44,6 @@ resource "google_project_iam_member" "runtime" {
   member   = "serviceAccount:${google_service_account.runtime.email}"
 }
 
-# Agent Runtime's service agent starts the container as the runtime identity.
-resource "google_service_account_iam_member" "service_agent_uses_runtime" {
-  service_account_id = google_service_account.runtime.name
-  role               = "roles/iam.serviceAccountTokenCreator"
-  member             = local.reasoning_engine_service_agent
-  depends_on         = [google_project_service.this]
-}
-
 # ── The agent's Databricks credentials (value set out of band, never in state) ──
 resource "google_secret_manager_secret" "databricks_agent" {
   secret_id = "finance-agent-databricks"
@@ -70,12 +63,6 @@ resource "google_secret_manager_secret_iam_member" "runtime_reads_secret" {
   secret_id = google_secret_manager_secret.databricks_agent.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.runtime.email}"
-}
-
-resource "google_secret_manager_secret_iam_member" "service_agent_reads_secret" {
-  secret_id = google_secret_manager_secret.databricks_agent.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = local.reasoning_engine_service_agent
 }
 
 # ── Staging bucket for deployments (agent package, requirements) ──────
