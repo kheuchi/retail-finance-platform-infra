@@ -61,9 +61,11 @@ jobs:
           TF_VAR_databricks_workspace_url: ${{ vars.DATABRICKS_WORKSPACE_URL }}
           TF_VAR_agent_warehouse_id: ${{ vars.AGENT_WAREHOUSE_ID }}
           TF_VAR_agent_model_id: ${{ vars.AGENT_MODEL_ID || 'eu.anthropic.claude-sonnet-5' }}
+          TF_VAR_gcp_agent_sa_unique_id: ${{ vars.GCP_AGENT_SA_UNIQUE_ID || '' }}
           IMAGE_TAG: ${{ inputs.agent_image_tag }}
         run: |
           if [ -n "$IMAGE_TAG" ]; then export TF_VAR_agent_image_tag="$IMAGE_TAG"; fi
+          if [ -z "$TF_VAR_gcp_agent_sa_unique_id" ]; then unset TF_VAR_gcp_agent_sa_unique_id; fi
           terraform plan -input=false -lock-timeout=5m -out=agent.tfplan
       - name: Apply exact saved plan
         working-directory: agent
