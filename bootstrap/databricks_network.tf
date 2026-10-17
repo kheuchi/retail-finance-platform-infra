@@ -52,6 +52,8 @@ data "aws_availability_zones" "available" {
 locals {
   databricks_network_count = var.enable_databricks_network ? 1 : 0
   databricks_subnet_count  = var.enable_databricks_network ? 2 : 0
+  # Interface endpoints bill per hour per zone and cannot be paused: off = deleted, on = recreated.
+  interface_endpoint_count = var.enable_databricks_network && var.enable_interface_endpoints ? 1 : 0
 
   # Databricks requires each workspace subnet to carry a netmask between /17 and
   # /26, and it consumes two IP addresses per node: one for management traffic and
@@ -392,7 +394,7 @@ resource "aws_vpc_endpoint" "s3" {
 # running cost of this file. Two endpoints across two zones is roughly USD 15 a
 # month at current eu-central-1 pricing.
 resource "aws_vpc_endpoint" "sts" {
-  count = local.databricks_network_count
+  count = local.interface_endpoint_count
 
   vpc_id              = aws_vpc.databricks[0].id
   service_name        = "com.amazonaws.${var.aws_region}.sts"
@@ -407,7 +409,7 @@ resource "aws_vpc_endpoint" "sts" {
 }
 
 resource "aws_vpc_endpoint" "kinesis_streams" {
-  count = local.databricks_network_count
+  count = local.interface_endpoint_count
 
   vpc_id              = aws_vpc.databricks[0].id
   service_name        = "com.amazonaws.${var.aws_region}.kinesis-streams"
@@ -428,7 +430,7 @@ resource "aws_vpc_endpoint" "kinesis_streams" {
 # registered with the Databricks account before a workspace can use them; that
 # happens in the databricks/ stack.
 resource "aws_vpc_endpoint" "databricks_workspace" {
-  count = local.databricks_network_count
+  count = local.interface_endpoint_count
 
   vpc_id              = aws_vpc.databricks[0].id
   service_name        = var.databricks_workspace_vpce_service
@@ -443,7 +445,7 @@ resource "aws_vpc_endpoint" "databricks_workspace" {
 }
 
 resource "aws_vpc_endpoint" "databricks_relay" {
-  count = local.databricks_network_count
+  count = local.interface_endpoint_count
 
   vpc_id              = aws_vpc.databricks[0].id
   service_name        = var.databricks_relay_vpce_service

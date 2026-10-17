@@ -64,3 +64,14 @@ variable "gcp_agent_sa_unique_id" {
   type        = string
   default     = null
 }
+
+variable "enable_endpoints" {
+  description = <<-EOT
+  Whether the agent's seven interface endpoints exist. They bill per hour per zone
+  (about USD 4 a day) and AWS has no pause: false deletes them, true recreates them.
+  Set to false on 2026-10-17 after the project ended; the agent now runs on Google
+  Agent Runtime (D-032), which reaches the gateway over its public endpoint.
+  EOT
+  type        = bool
+  default     = false
+}

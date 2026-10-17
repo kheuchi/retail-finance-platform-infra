@@ -100,6 +100,20 @@ variable "github_deploy_environment" {
   default     = "aws-bootstrap"
 }
 
+variable "enable_interface_endpoints" {
+  description = <<-EOT
+  Whether the four interface endpoints of the Databricks network exist (STS, Kinesis,
+  workspace and relay PrivateLink). They are the network's only running cost and AWS
+  has no pause: false deletes them, true recreates them. Everything else stays.
+
+  Set to false on 2026-10-17, after the project ended, to stop the hourly charge.
+  To resume: set true, apply this stack, then apply databricks/ (new endpoint IDs
+  must be registered with the Databricks account and the workspace network updated).
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "enable_databricks_network" {
   description = <<-EOT
   Whether to create the customer-managed VPC for the Databricks classic compute

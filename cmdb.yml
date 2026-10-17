@@ -148,6 +148,8 @@ ci_cd:
 costs_usd_month:
   bootstrap_without_network: "~1 (CloudTrail storage, logs, alarms)"
   databricks_network: "~64 (4 interface endpoints x 2 AZ x ~0.011/h); S3 gateway free"
+  agent_endpoints: "~120 (7 interface endpoints x 2 AZ)"
+  endpoints_since_2026_10_17: "0: all 11 interface endpoints switched off (enable_interface_endpoints, enable_endpoints = false); VPC, subnets, S3 gateway, data and IAM kept. Measured before: USD 6.34/day"
   nat_gateway_alternative: "~38 + data processing (not used)"
   databricks_dbus: covered by USD 400 trial credit until 2026-10-06
   ec2_clusters: only while clusters run

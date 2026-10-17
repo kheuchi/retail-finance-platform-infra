@@ -56,7 +56,7 @@ locals {
 }
 
 resource "aws_vpc_endpoint" "agent" {
-  for_each = local.endpoint_services
+  for_each = var.enable_endpoints ? local.endpoint_services : toset([])
 
   vpc_id              = local.vpc_id
   service_name        = "com.amazonaws.${var.aws_region}.${each.key}"
